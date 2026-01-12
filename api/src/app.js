@@ -9,17 +9,21 @@ const orderRoutes = require("./routes/order.route");
 const userRoute = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 const checkoutRoutes = require("./routes/chekoutRoutes");
+const telegramMsg = require("./routes/telegramRoute");
+const adminRoutes = require("./routes/adminRoutes");
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+app.use("/api/", telegramMsg);
 app.use("/api", healthRoutes);
 app.use("/api", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoute);
 app.use("/api/checkout", checkoutRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(errorHandler);
 

@@ -4,7 +4,7 @@ import ProductList from "./ProductList";
 function HomePage() {
   return (
     <div>
-      <h1>Products</h1>
+      <h1 className="h1">Our Products</h1>
       <ProductList />
     </div>
   );

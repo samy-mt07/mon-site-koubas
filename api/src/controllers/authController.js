@@ -77,7 +77,6 @@ async function logout(req, res) {
     .json({ message: "Déconnexion réussie (token supprimé côté client)" });
 }
 
-// 🔴 TRÈS IMPORTANT : exporter les 3 fonctions !
 module.exports = {
   register,
   login,

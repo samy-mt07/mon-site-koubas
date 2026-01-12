@@ -1,165 +1,336 @@
-// src/routes/checkoutRoutes.js
 const express = require("express");
 const router = express.Router();
 const Stripe = require("stripe");
-const authMiddleware = require("../middlewares/authMiddleware");
-const { decreaseStock } = require("../models/productModel");
 const pool = require("../config/db");
+const authMiddleware = require("../middlewares/authMiddleware");
+const telegramService = require("../services/telegramService");
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+/**
+ * POST /api/checkout/create-session
+ * - crée order
+ * - crée order_items
+ * - crée shipment (pending)
+ * - crée session Stripe
+ */
 router.post("/create-session", authMiddleware, async (req, res) => {
-  try {
-    const { items } = req.body;
-    // items = [{ name, price, quantity }], price en dollars (ex: 24.99)
+  const client = await pool.connect();
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "NO_ITEMS" });
+  try {
+    const { cartItems, shipping } = req.body;
+    const userId = req.user.id;
+
+    if (!cartItems || cartItems.length === 0) {
+      return res.status(400).json({ error: "EMPTY_CART" });
     }
 
-    const lineItems = items.map((item) => {
-      return {
-        price_data: {
-          currency: "cad", // ou "usd"
-          product_data: {
-            name: item.name,
-          },
-          unit_amount: Math.round(item.price * 100), // 24.99 => 2499
-        },
-        quantity: item.quantity,
-      };
-    });
-    console.log("SUCCESS URL =", process.env.STRIPE_SUCCESS_URL);
+    if (
+      !shipping ||
+      !shipping.fullName ||
+      !shipping.phone ||
+      !shipping.address1 ||
+      !shipping.city ||
+      !shipping.postalCode
+    ) {
+      return res.status(400).json({ error: "MISSING_SHIPPING_INFO" });
+    }
 
+    await client.query("BEGIN");
+
+    // 1️⃣ Charger les produits
+    const productIds = cartItems.map((i) => i.id);
+    const productsRes = await client.query(
+      `SELECT * FROM products WHERE id = ANY($1::bigint[]) AND is_active = true`,
+      [productIds]
+    );
+
+    if (productsRes.rows.length !== cartItems.length) {
+      throw new Error("INVALID_PRODUCTS");
+    }
+
+    // 2️⃣ Calcul du total
+    let totalCents = 0;
+    const itemsMap = new Map();
+
+    for (const product of productsRes.rows) {
+     const item = cartItems.find((i) => Number(i.id) === Number(product.id));
+
+if (!item) {
+  throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${product.id}`);
+}
+
+if (!item.quantity || Number(item.quantity) <= 0) {
+  throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${product.id}`);
+}
+      const subtotal = product.price_cents * item.quantity;
+      totalCents += subtotal;
+
+      itemsMap.set(product.id, {
+        product,
+        quantity: item.quantity,
+        subtotal,
+      });
+    }
+
+    // 3️⃣ Créer la commande
+    const orderRes = await client.query(
+      `
+      INSERT INTO orders (
+        user_id,
+        total_cents,
+        status,
+        shipping_full_name,
+        shipping_phone,
+        shipping_address1,
+        shipping_apartment,
+        shipping_city,
+        shipping_postal_code,
+        shipping_country,
+        shipping_status
+      )
+      VALUES ($1,$2,'pending',$3,$4,$5,$6,$7,$8,$9,'pending_shipment')
+      RETURNING *
+      `,
+      [
+        userId,
+        totalCents,
+        shipping.fullName,
+        shipping.phone,
+        shipping.address1,
+        shipping.apartment || null,
+        shipping.city,
+        shipping.postalCode,
+        shipping.country || "Canada",
+      ]
+    );
+
+    const order = orderRes.rows[0];
+
+    // 4️⃣ Créer les order_items
+    for (const { product, quantity, subtotal } of itemsMap.values()) {
+      await client.query(
+        `
+        INSERT INTO order_items (
+          order_id,
+          product_id,
+          quantity,
+          unit_price_cents,
+          subtotal_cents
+        )
+        VALUES ($1,$2,$3,$4,$5)
+        `,
+        [order.id, product.id, quantity, product.price_cents, subtotal]
+      );
+    }
+
+    // 5️⃣ Créer le shipment (UniUni → pending)
+    await client.query(
+      `
+      INSERT INTO shipments (order_id, carrier, status)
+      VALUES ($1,'uniuni','pending')
+      `,
+      [order.id]
+    );
+
+    // 6️⃣ Stripe session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      line_items: lineItems,
-      success_url: process.env.STRIPE_SUCCESS_URL,
-      cancel_url: process.env.STRIPE_CANCEL_URL,
-      customer_email: req.user.email, // optionnel, si tu as l'email dans le token
+      line_items: productsRes.rows.map((p) => {
+  const item = cartItems.find((i) => Number(i.id) === Number(p.id));
+
+  if (!item) {
+    throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${p.id}`);
+  }
+
+  if (!item.quantity || Number(item.quantity) <= 0) {
+    throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${p.id}`);
+  }
+
+  return {
+    price_data: {
+      currency: "cad",
+      product_data: { name: p.name },
+      unit_amount: p.price_cents,
+    },
+    quantity: Number(item.quantity),
+  };
+}),
+
+      success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+      metadata: {
+        order_id: order.id.toString(),
+        user_id: userId.toString(),
+      },
     });
+
+    await client.query("COMMIT");
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error("Stripe error", err);
-    res.status(500).json({ error: "STRIPE_ERROR" });
+    await client.query("ROLLBACK");
+    console.error("Checkout error:", err);
+    res.status(500).json({ error: "CHECKOUT_FAILED" });
+  } finally {
+    client.release();
   }
 });
 
-// GET /api/checkout/invoice/:sessionId
-// -> crée la commande, order_items, payment et diminue le stock
-router.get("/invoice/:sessionId", authMiddleware, async (req, res) => {
-  try {
-    const { sessionId } = req.params;
+/**
+ * GET /api/checkout/invoice/:sessionId
+ * - vérifie Stripe
+ * - confirme paiement
+ * - enregistre payment
+ * - notifie Telegram
+ */
+// router.get("/invoice/:sessionId", async (req, res) => {
+//    console.log("✅ INVOICE ROUTE HIT:", req.params.sessionId);
+//   const client = await pool.connect();
 
-    // 1) Récupérer la session Stripe
+//   try {
+//     const sessionId = String(req.params.sessionId || "").trim();
+
+//     const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+//     if (session.payment_status !== "paid") {
+//       return res.status(400).json({
+//         error: "PAYMENT_NOT_COMPLETED",
+//         payment_status: session.payment_status,
+//       });
+//     }
+
+//     const orderId = Number(session.metadata.order_id);
+
+//     await client.query("BEGIN");
+
+//     await client.query(`UPDATE orders SET status='paid' WHERE id=$1`, [orderId]);
+
+//     await client.query(
+//       `
+//       INSERT INTO payments (
+//         order_id,
+//         amount_cents,
+//         provider,
+//         provider_payment_id,
+//         status
+//       )
+//       VALUES ($1,$2,'stripe',$3,'succeeded')
+//       `,
+//       [orderId, Number(session.amount_total || 0), session.payment_intent]
+//     );
+
+//     await client.query("COMMIT");
+
+//     // 🔔 Telegram (best effort)
+//     try {
+//       await telegramService.sendOrderNotification(orderId);
+//     } catch (e) {
+//       console.warn("Telegram notification failed");
+//     }
+
+//     return res.json({ status: "ok", orderId });
+//   } catch (err) {
+//     // rollback seulement si une transaction a démarré
+//     try {
+//       await client.query("ROLLBACK");
+//     } catch {}
+
+//     console.error("Invoice error:", err);
+
+//     return res.status(500).json({
+//       error: "INVOICE_FAILED",
+//       message: err.message,
+//       code: err.code,
+//       type: err.type,
+//     });
+//   } finally {
+//     client.release();
+//   }
+// });
+
+router.get("/invoice/:sessionId", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const sessionId = String(req.params.sessionId || "").trim();
+
+    // 1) Stripe: récupérer la session
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== "paid") {
-      return res.status(400).json({ error: "PAYMENT_NOT_PAID" });
+      return res.status(400).json({
+        error: "PAYMENT_NOT_COMPLETED",
+        payment_status: session.payment_status,
+      });
     }
 
-    // 2) Vérifier si un paiement existe déjà pour cette session
-    const paymentCheck = await pool.query(
-      "SELECT * FROM payments WHERE provider = 'stripe' AND provider_payment_id = $1",
-      [sessionId]
-    );
-
-    let order;
-    let items = [];
-
-    if (paymentCheck.rows.length > 0) {
-      // Paiement existe déjà -> on récupère juste la commande + items
-      const existingPayment = paymentCheck.rows[0];
-
-      const orderResult = await pool.query(
-        "SELECT * FROM orders WHERE id = $1",
-        [existingPayment.order_id]
-      );
-      order = orderResult.rows[0];
-
-      const itemsResult = await pool.query(
-        "SELECT * FROM order_items WHERE order_id = $1",
-        [order.id]
-      );
-      items = itemsResult.rows;
-
-      return res.json({ order, items });
+    // 2) metadata
+    const orderId = Number(session.metadata?.order_id);
+    if (!orderId) {
+      return res.status(400).json({ error: "MISSING_ORDER_ID_IN_METADATA" });
     }
 
-    // 3) Récupérer les lignes Stripe
-    const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, {
-      limit: 100,
-    });
+    await client.query("BEGIN");
 
-    const totalCents = session.amount_total;
-    const userId = req.user.id;
-
-    // 4) Créer la commande
-    const orderResult = await pool.query(
-      `INSERT INTO orders (user_id, total_cents, status)
-       VALUES ($1, $2, 'paid')
-       RETURNING id, user_id, total_cents, status, created_at`,
-      [userId, totalCents]
+    // 3) Anti-double: si déjà payé -> on renvoie ok
+    const existingPayment = await client.query(
+      `SELECT id FROM payments WHERE provider='stripe' AND provider_payment_id=$1 LIMIT 1`,
+      [session.payment_intent]
     );
-    order = orderResult.rows[0];
 
-    // 5) Créer les order_items et diminuer le stock
-    for (const li of lineItems.data) {
-      const quantity = li.quantity;
-      const subtotalCents = li.amount_subtotal;
-      const unitPriceCents = Math.round(subtotalCents / quantity);
-      const productName = li.description; // le name défini dans create-session
-
-      // retrouver le produit par son nom
-      const productResult = await pool.query(
-        "SELECT id FROM products WHERE name = $1 LIMIT 1",
-        [productName]
-      );
-
-      let productId = null;
-
-      if (productResult.rows.length > 0) {
-        productId = productResult.rows[0].id;
-
-        // 🔥 décrémenter le stock
-        const updated = await decreaseStock(productId, quantity);
-        if (!updated) {
-          console.error(
-            "Stock insuffisant pour le produit",
-            productId,
-            productName
-          );
-          // ici on log seulement; tu peux plus tard gérer mieux
-        }
-      }
-
-      // insérer la ligne de commande
-      const itemResult = await pool.query(
-        `INSERT INTO order_items
-          (order_id, product_id, quantity, unit_price_cents, subtotal_cents)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, product_id, quantity, unit_price_cents, subtotal_cents`,
-        [order.id, productId, quantity, unitPriceCents, subtotalCents]
-      );
-
-      items.push(itemResult.rows[0]);
+    if (existingPayment.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.json({ status: "ok", orderId, alreadyProcessed: true });
     }
 
-    // 6) Enregistrer le paiement
-    await pool.query(
-      `INSERT INTO payments
-        (order_id, amount_cents, provider, provider_payment_id, status)
-       VALUES ($1, $2, 'stripe', $3, 'succeeded')`,
-      [order.id, totalCents, sessionId]
+    // 4) Update order
+    await client.query(`UPDATE orders SET status='paid' WHERE id=$1`, [orderId]);
+
+    // 5) Insert payment
+    await client.query(
+      `
+      INSERT INTO payments (
+        order_id,
+        amount_cents,
+        provider,
+        provider_payment_id,
+        status
+      )
+      VALUES ($1,$2,'stripe',$3,'succeeded')
+      `,
+      [orderId, Number(session.amount_total || 0), session.payment_intent]
     );
 
-    return res.json({ order, items });
+    await client.query("COMMIT");
+
+    // 6) Telegram best-effort
+    try {
+      await telegramService.sendOrderNotification(orderId);
+    } catch (e) {
+      console.warn("Telegram notification failed");
+    }
+
+    return res.json({ status: "ok", orderId });
   } catch (err) {
-    console.error("Invoice error", err);
-    return res.status(500).json({ error: "INVOICE_ERROR" });
+    try {
+      await client.query("ROLLBACK");
+    } catch {}
+
+    console.error("Invoice error:", err);
+
+    return res.status(500).json({
+      error: "INVOICE_FAILED",
+      message: err.message,
+      code: err.code,
+      type: err.type,
+    });
+  } finally {
+    client.release();
   }
 });
+
+
 
 module.exports = router;

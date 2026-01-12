@@ -36,7 +36,7 @@ function ProductList() {
   }
 
   return (
-    <div>
+    <div className="product-list">
       {products.map(function (product) {
         return (
           <ProductCard

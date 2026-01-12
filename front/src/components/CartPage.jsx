@@ -12,7 +12,11 @@ function CartPage() {
   const totalPrice = cart.getTotalPrice();
 
   if (items.length === 0) {
-    return <p>Your cart is empty.</p>;
+    return (
+      <div className="cart-empty">
+        <h2>Your cart is empty.</h2>
+      </div>
+    );
   }
 
   function handlePay() {
@@ -27,57 +31,69 @@ function CartPage() {
   }
 
   return (
-    <div>
-      <h1>Cart</h1>
+    <div className="cart-page container">
+      <h2>Panier</h2>
 
-      {items.map(function (item) {
-        function handleRemove() {
-          cart.removeFromCart(item.id);
-        }
+      <div className="cart-items product-list">
+        {items.map((item) => {
+          const subtotal = item.price * item.quantity;
 
-        function handleIncrease() {
-          cart.increaseQuantity(item.id);
-        }
+          function handleRemove() {
+            cart.removeFromCart(item.id);
+          }
 
-        function handleDecrease() {
-          cart.decreaseQuantity(item.id);
-        }
+          function handleIncrease() {
+            cart.increaseQuantity(item.id);
+          }
 
-        const subtotal = item.price * item.quantity;
+          function handleDecrease() {
+            cart.decreaseQuantity(item.id);
+          }
 
-        return (
-          <div key={item.id}>
-            <p>{item.name}</p>
+          return (
+            <div key={item.id} className="card">
+              <h3 className="mb-2">{item.name}</h3>
 
-            <p>Unit price: {item.price.toFixed(2)}</p>
+              <p>Unit price: {item.price.toFixed(2)} $</p>
 
-            <div>
-              <button type="button" onClick={handleDecrease}>
-                -
-              </button>
-              <span> {item.quantity} </span>
-              <button type="button" onClick={handleIncrease}>
-                +
+              <div className="cart-qty-group">
+                <button
+                  type="button"
+                  className="btn-cart-qty"
+                  onClick={handleDecrease}
+                >
+                  -
+                </button>
+                <span className="cart-qty-value">{item.quantity}</span>
+                <button
+                  type="button"
+                  className="btn-cart-qty"
+                  onClick={handleIncrease}
+                >
+                  +
+                </button>
+              </div>
+
+              <p className="mt-2">Subtotal: {subtotal.toFixed(2)} $</p>
+
+              <button
+                type="button"
+                className="btn-cart-remove"
+                onClick={handleRemove}
+              >
+                Remove
               </button>
             </div>
+          );
+        })}
+      </div>
 
-            <p>Subtotal: {subtotal.toFixed(2)}</p>
-
-            <button type="button" onClick={handleRemove}>
-              Remove
-            </button>
-
-            <hr />
-          </div>
-        );
-      })}
-
-      <h2>Total: {totalPrice.toFixed(2)}</h2>
-
-      {/* 🔥 ancien bouton Clear cart remplacé par Payer */}
-      <button type="button" onClick={handlePay}>
-        Commander
-      </button>
+      <div className="cart-summary text-center mt-4">
+        <h2>Total: {totalPrice.toFixed(2)} $</h2>
+        <button type="button" className="btn-cart-commande" onClick={handlePay}>
+          Commander
+        </button>
+      </div>
     </div>
   );
 }

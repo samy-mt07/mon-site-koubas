@@ -51,3 +51,38 @@ CREATE TABLE IF NOT EXISTS payments (
         status IN ('pending', 'succeeded', 'failed')
     )
 );
+
+ALTER TABLE orders
+ADD COLUMN shipping_full_name   TEXT NOT NULL DEFAULT '',
+ADD COLUMN shipping_phone       TEXT NOT NULL DEFAULT '',
+ADD COLUMN shipping_address1    TEXT NOT NULL DEFAULT '',
+ADD COLUMN shipping_apartment   TEXT DEFAULT NULL,
+ADD COLUMN shipping_city        TEXT NOT NULL DEFAULT '',
+ADD COLUMN shipping_postal_code TEXT NOT NULL DEFAULT '',
+ADD COLUMN shipping_country     TEXT NOT NULL DEFAULT 'Canada',
+ADD COLUMN shipping_status      TEXT NOT NULL DEFAULT 'pending_shipment';
+
+CREATE TABLE shipments (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  carrier TEXT NOT NULL,                -- ex: 'uniuni'
+  service_code TEXT,                    -- optionnel, selon la doc UniUni
+  external_shipment_id TEXT,            -- ID côté UniUni
+  tracking_number TEXT,
+  label_url TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',  -- pending, created, in_transit, delivered, failed...
+  last_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+;
+
+
+CREATE INDEX IF NOT EXISTS idx_shipments_order_id ON shipments(order_id);
+CREATE INDEX IF NOT EXISTS idx_shipments_status ON shipments(status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_shipments_order_id ON shipments(order_id);
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+
