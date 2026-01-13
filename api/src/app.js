@@ -12,6 +12,10 @@ const checkoutRoutes = require("./routes/chekoutRoutes");
 const telegramMsg = require("./routes/telegramRoute");
 const adminRoutes = require("./routes/adminRoutes");
 const app = express();
+const path = require("path");
+
+
+
 
 app.use(cors());
 app.use(express.json());
@@ -24,7 +28,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoute);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/admin", adminRoutes);
-
+app.use("/labels", express.static(path.join(__dirname, "../labels")));
 app.use(errorHandler);
 
 module.exports = app;

@@ -178,77 +178,7 @@ if (!item.quantity || Number(item.quantity) <= 0) {
   }
 });
 
-/**
- * GET /api/checkout/invoice/:sessionId
- * - vérifie Stripe
- * - confirme paiement
- * - enregistre payment
- * - notifie Telegram
- */
-// router.get("/invoice/:sessionId", async (req, res) => {
-//    console.log("✅ INVOICE ROUTE HIT:", req.params.sessionId);
-//   const client = await pool.connect();
 
-//   try {
-//     const sessionId = String(req.params.sessionId || "").trim();
-
-//     const session = await stripe.checkout.sessions.retrieve(sessionId);
-
-//     if (session.payment_status !== "paid") {
-//       return res.status(400).json({
-//         error: "PAYMENT_NOT_COMPLETED",
-//         payment_status: session.payment_status,
-//       });
-//     }
-
-//     const orderId = Number(session.metadata.order_id);
-
-//     await client.query("BEGIN");
-
-//     await client.query(`UPDATE orders SET status='paid' WHERE id=$1`, [orderId]);
-
-//     await client.query(
-//       `
-//       INSERT INTO payments (
-//         order_id,
-//         amount_cents,
-//         provider,
-//         provider_payment_id,
-//         status
-//       )
-//       VALUES ($1,$2,'stripe',$3,'succeeded')
-//       `,
-//       [orderId, Number(session.amount_total || 0), session.payment_intent]
-//     );
-
-//     await client.query("COMMIT");
-
-//     // 🔔 Telegram (best effort)
-//     try {
-//       await telegramService.sendOrderNotification(orderId);
-//     } catch (e) {
-//       console.warn("Telegram notification failed");
-//     }
-
-//     return res.json({ status: "ok", orderId });
-//   } catch (err) {
-//     // rollback seulement si une transaction a démarré
-//     try {
-//       await client.query("ROLLBACK");
-//     } catch {}
-
-//     console.error("Invoice error:", err);
-
-//     return res.status(500).json({
-//       error: "INVOICE_FAILED",
-//       message: err.message,
-//       code: err.code,
-//       type: err.type,
-//     });
-//   } finally {
-//     client.release();
-//   }
-// });
 
 router.get("/invoice/:sessionId", async (req, res) => {
   const client = await pool.connect();
@@ -303,16 +233,17 @@ router.get("/invoice/:sessionId", async (req, res) => {
       [orderId, Number(session.amount_total || 0), session.payment_intent]
     );
 
-    await client.query("COMMIT");
+ await client.query("COMMIT");
 
-    // 6) Telegram best-effort
-    try {
-      await telegramService.sendOrderNotification(orderId);
-    } catch (e) {
-      console.warn("Telegram notification failed");
-    }
+// 🔔 Telegram
+try {
+  await telegramService.sendOrderNotification(orderId);
+} catch (e) {
+  console.warn("Telegram notification failed:", e.message);
+}
 
-    return res.json({ status: "ok", orderId });
+res.json({ status: "ok", orderId });
+
   } catch (err) {
     try {
       await client.query("ROLLBACK");
