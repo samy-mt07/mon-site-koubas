@@ -1,31 +1,50 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import HomePage from "./components/HomePage";
-import CartPage from "./components/CartPage";
-import LoginPage from "./components/LoginPage";
-import RegisterPage from "./components/RegisterPage";
-import CheckoutPage from "./components/ChekoutPage";
-import SuccessPage from "./components/SuccessPage";
-import Footer from "./components/Footer";
-import OrdersPage from "./admin/OrdersPage";
-import OrderDetails from "./admin/OrderDetails";
+import React, { useState } from "react";
+import Navbar from "./components/layout/Navbar";
+import AuthCard from "./components/AuthCard";
+import "./App.css";
 
 function App() {
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [welcome, setWelcome] = useState("");
+
+  const handleLogin = (userObj) => {
+    setIsLoggedIn(true);
+    setUser(userObj || null);
+    setIsAuthOpen(false);
+    const name = userObj?.full_name || userObj?.name || userObj?.email || "";
+    setWelcome(`Bienvenue ${name}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => setWelcome(""), 2000);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUser(null);
+  };
+
   return (
-    <div>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/success" element={<SuccessPage />} />
-        <Route path="/admin/orders" element={<OrdersPage />} />
-        <Route path="/admin/orders/:id" element={<OrderDetails />} />
-      </Routes>
-      <Footer />
+    <div className="page-shell">
+      <Navbar
+        isLoggedIn={isLoggedIn}
+        onUserClick={() => setIsAuthOpen(true)}
+        onLogout={handleLogout}
+      />
+      <main className="homepage">
+        <div className="homepageContent">
+          <h1>KOUBA SCENTS</h1>
+          <p>
+            Sublimez votre intérieur avec l'art du parfum. Découvrez nos
+            diffuseurs d'exception.
+          </p>
+          <button className="heroButton" type="button">
+            DÉCOUVRIR NOS COLLECTIONS
+          </button>
+        </div>
+      </main>
+      {isAuthOpen && <AuthCard onClose={() => setIsAuthOpen(false)} onLogin={handleLogin} />}
+      {welcome && <div className="welcomeToast">{welcome}</div>}
     </div>
   );
 }

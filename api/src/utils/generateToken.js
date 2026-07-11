@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const config = require("../config/env");
 
 function generateToken(user) {
   return jwt.sign(
@@ -8,7 +9,7 @@ function generateToken(user) {
       email: user.email,
       role: user.role, // <-- OBLIGATOIRE POUR ADMIN
     },
-    process.env.JWT_SECRET,
+    config.jwt.secret,
     { expiresIn: "24h" }
   );
 }

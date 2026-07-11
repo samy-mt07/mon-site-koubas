@@ -1,0 +1,97 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.card {
+  width: min(100%, 440px);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.16);
+  padding: 2rem;
+  position: relative;
+}
+
+.closeButton {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  border: none;
+  background: transparent;
+  color: #334155;
+  font-size: 1.75rem;
+  cursor: pointer;
+}
+
+.content h2 {
+  margin: 0 0 0.85rem;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  color: #111827;
+}
+
+.content p {
+  margin: 0 0 1.75rem;
+  color: #475569;
+  line-height: 1.85;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.input {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: #f8f5ef;
+  color: #111827;
+  font-size: 1rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #d4c4a7;
+  box-shadow: 0 0 0 4px rgba(231, 216, 184, 0.18);
+}
+
+.submitButton {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: #e7d8b8;
+  color: #2f2a22;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.submitButton:hover {
+  background: #d9c39a;
+  transform: translateY(-1px);
+}
+
+.error {
+  color: #b63a3a;
+  font-size: 0.95rem;
+  background: rgba(182, 58, 58, 0.08);
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+}

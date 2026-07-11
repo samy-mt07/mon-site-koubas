@@ -3,9 +3,10 @@
 // api/src/services/authService.js
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const config = require("../config/env");
 const { createUser, getUserByEmail } = require("../models/userModel");
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = config.jwt.secret;
 
 // REGISTER
 async function registerUser({ full_name, email, password }) {
@@ -59,42 +60,41 @@ async function loginUser({ email, password }) {
     throw new Error("MISSING_FIELDS");
   }
 
-  // 1️⃣ On cherche l'utilisateur par email
+  //  On cherche l'utilisateur par email
   const user = await getUserByEmail(email);
   if (!user) {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  // 2️⃣ On vérifie le mot de passe
+  //  On vérifie le mot de passe
   const isValid = await bcrypt.compare(password, user.password_hash);
   if (!isValid) {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  // 3️⃣ On s'assure que is_admin est bien un booléen
+  // 3️ On s'assure que is_admin est bien un booléen
   // (si dans la BD c'est NULL → false)
   user.is_admin = user.is_admin ?? false;
 
-  // 4️⃣ Payload qui sera dans le token ET renvoyé au front
+  // 4️ Payload qui sera dans le token ET renvoyé au front
   const payload = {
     id: user.id,
     full_name: user.full_name,
     email: user.email,
     created_at: user.created_at,
-    is_admin: user.is_admin, // 🔥 très important
+    is_admin: user.is_admin, //  très important
   };
 
-  // 5️⃣ Générer le token JWT
+// 5️Générer le token JWT
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 
-  // 6️⃣ On enlève le hash avant de renvoyer l'utilisateur
+  // 6️ On enlève le hash avant de renvoyer l'utilisateur
   delete user.password_hash;
 
   return { user: payload, token };
 }
 
-module.exports = loginUser;
-
+//  UN SEUL EXPORT PROPRE ICI :
 module.exports = {
   registerUser,
   loginUser,

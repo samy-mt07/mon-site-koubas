@@ -5,7 +5,9 @@ const pool = require("../config/db");
 const authMiddleware = require("../middlewares/authMiddleware");
 const telegramService = require("../services/telegramService");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 /**
  * POST /api/checkout/create-session
@@ -133,6 +135,10 @@ if (!item.quantity || Number(item.quantity) <= 0) {
       [order.id]
     );
 
+    if (!stripe) {
+      throw new Error("STRIPE_NOT_CONFIGURED");
+    }
+
     // 6️⃣ Stripe session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -185,6 +191,10 @@ router.get("/invoice/:sessionId", async (req, res) => {
 
   try {
     const sessionId = String(req.params.sessionId || "").trim();
+
+    if (!stripe) {
+      return res.status(503).json({ error: "STRIPE_NOT_CONFIGURED" });
+    }
 
     // 1) Stripe: récupérer la session
     const session = await stripe.checkout.sessions.retrieve(sessionId);
