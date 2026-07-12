@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "./components/layout/Navbar";
 import AuthCard from "./components/AuthCard";
 import "./App.css";
 
 function App() {
+  const navigate = useNavigate();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
@@ -38,7 +40,7 @@ function App() {
             Sublimez votre intérieur avec l'art du parfum. Découvrez nos
             diffuseurs d'exception.
           </p>
-          <button className="heroButton" type="button">
+          <button className="heroButton" type="button" onClick={() => navigate("/products")}>
             DÉCOUVRIR NOS COLLECTIONS
           </button>
         </div>

@@ -1,4 +1,5 @@
-
+// /home/samy/mon-site-koubas/api/src/controllers/orderController.js
+const pool = require("../config/env").db ? require("../config/db") : null // Assurez-vous que la configuration de la base de données est correctement importée;
 
 async function checkout(req, res) {
   const client = await pool.connect();

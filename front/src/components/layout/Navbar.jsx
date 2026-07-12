@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { User, ShoppingCart } from "lucide-react";
+import { Link } from "react-router-dom";
+import { User, ShoppingCart, LogOut } from "lucide-react";
 import styles from "./Navbar.module.css";
 
-function Navbar({ isLoggedIn, onUserClick, onLogout }) {
+function Navbar({ isLoggedIn, onUserClick, onLogout, cartItems = [] }) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const cartCount = Array.isArray(cartItems) ? cartItems.reduce((sum, item) => sum + Number(item?.quantity || 0), 0) : 0;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,12 +22,12 @@ function Navbar({ isLoggedIn, onUserClick, onLogout }) {
     <nav className={`${styles.navbar} ${isScrolled ? styles.scrolled : ""}`}>
       <div className={styles.inner}>
         <div className={styles.logo}>
-          <a href="#">AURA SCENTS</a>
+          <Link to="/">AURA SCENTS</Link>
         </div>
 
         <ul className={styles.navLinks}>
           <li>
-            <a href="#collections">Collection</a>
+            <Link to="/products">Collection</Link>
           </li>
           <li>
             <a href="#story">Notre Histoire</a>
@@ -44,16 +47,93 @@ function Navbar({ isLoggedIn, onUserClick, onLogout }) {
           <button
             type="button"
             className={styles.authButton}
-            onClick={isLoggedIn ? onLogout : onUserClick}
+            onClick={() => {
+              if (isLoggedIn) {
+                setShowLogoutModal(true);
+                return;
+              }
+              onUserClick?.();
+            }}
+            aria-label={isLoggedIn ? "Déconnexion" : "Connexion"}
           >
-            {isLoggedIn ? "Déconnexion" : "Authentifier"}
+            {isLoggedIn ? <LogOut size={20} /> : <User size={20} />}
           </button>
-          <button type="button" className={styles.cartButton} aria-label="Mon panier">
+          <button
+            type="button"
+            className={styles.cartButton}
+            aria-label="Mon panier"
+            onClick={() => {
+              fetch("/api/orders/checkout", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  customer: {
+                    full_name: "Client",
+                    email: "client@example.com",
+                  },
+                  cart: cartItems.map((item) => ({
+                    product_id: item.id,
+                    quantity: Number(item.quantity || 1),
+                  })),
+                  shipping: {
+                    full_name: "Client",
+                    phone: "0000000000",
+                    address1: "1 rue de test",
+                    city: "Montréal",
+                    postal_code: "H1H1H1",
+                    country: "Canada",
+                  },
+                }),
+              })
+                .then(async (response) => {
+                  const data = await response.json();
+                  if (!response.ok) {
+                    throw new Error(data?.error || "Impossible d’ouvrir le panier.");
+                  }
+                  return data;
+                })
+                .then((data) => {
+                  window.alert(`Commande créée avec succès : ${data.order_id || "n/a"}`);
+                })
+                .catch((error) => {
+                  window.alert(error.message || "Impossible d’ouvrir le panier pour le moment.");
+                });
+            }}
+          >
             <ShoppingCart size={20} />
-            <span className={styles.badge}>3</span>
+            {cartCount > 0 && <span className={styles.badge}>{cartCount}</span>}
           </button>
         </div>
       </div>
+
+      {showLogoutModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard}>
+            <p>Êtes-vous sûr de vouloir vous déconnecter ?</p>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancelButton}
+                onClick={() => setShowLogoutModal(false)}
+              >
+                Non
+              </button>
+              <button
+                type="button"
+                className={styles.modalConfirmButton}
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  onLogout?.();
+                }}
+              >
+                Oui
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
