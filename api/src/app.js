@@ -5,7 +5,6 @@ const cors = require("cors");
 const healthRoutes = require("./routes/health.route");
 const productRoutes = require("./routes/product.route");
 const errorHandler = require("./middlewares/errorHandler");
-const orderRoutes = require("./routes/order.route");
 const userRoute = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 const checkoutRoutes = require("./routes/chekoutRoutes");
@@ -23,7 +22,8 @@ app.use(express.json());
 app.use("/api/", telegramMsg);
 app.use("/api", healthRoutes);
 app.use("/api", productRoutes);
-app.use("/api/orders", orderRoutes);
+// POST /api/orders/checkout (mock-provider, no Stripe) retired pre-production.
+// order.route.js and orderController.js are left on disk, just unmounted.
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoute);
 app.use("/api/checkout", checkoutRoutes);

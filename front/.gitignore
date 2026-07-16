@@ -31,3 +31,5 @@ dist-ssr
 
 # Stripe secret key file (si tu en utilises un)
 stripe_secret_key.txt
+UNIUNI-DECOUPLING.md 
+CLAUDE.md
