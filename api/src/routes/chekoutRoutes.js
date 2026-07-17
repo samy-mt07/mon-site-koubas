@@ -9,13 +9,6 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-/**
- * POST /api/checkout/create-session
- * - crée order
- * - crée order_items
- * - crée shipment (pending)
- * - crée session Stripe
- */
 router.post("/create-session", authMiddleware, async (req, res) => {
   const client = await pool.connect();
 
@@ -40,7 +33,7 @@ router.post("/create-session", authMiddleware, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 1️⃣ Charger les produits
+    // Charger les produits
     const productIds = cartItems.map((i) => i.id);
     const productsRes = await client.query(
       `SELECT * FROM products WHERE id = ANY($1::bigint[]) AND is_active = true`,
@@ -51,20 +44,21 @@ router.post("/create-session", authMiddleware, async (req, res) => {
       throw new Error("INVALID_PRODUCTS");
     }
 
-    // 2️⃣ Calcul du total
+    // Calcul du total
     let totalCents = 0;
     const itemsMap = new Map();
 
     for (const product of productsRes.rows) {
-     const item = cartItems.find((i) => Number(i.id) === Number(product.id));
+      const item = cartItems.find((i) => Number(i.id) === Number(product.id));
 
-if (!item) {
-  throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${product.id}`);
-}
+      if (!item) {
+        throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${product.id}`);
+      }
 
-if (!item.quantity || Number(item.quantity) <= 0) {
-  throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${product.id}`);
-}
+      if (!item.quantity || Number(item.quantity) <= 0) {
+        throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${product.id}`);
+      }
+
       const subtotal = product.price_cents * item.quantity;
       totalCents += subtotal;
 
@@ -75,7 +69,7 @@ if (!item.quantity || Number(item.quantity) <= 0) {
       });
     }
 
-    // 3️⃣ Créer la commande
+    // Créer la commande
     const orderRes = await client.query(
       `
       INSERT INTO orders (
@@ -109,7 +103,7 @@ if (!item.quantity || Number(item.quantity) <= 0) {
 
     const order = orderRes.rows[0];
 
-    // 4️⃣ Créer les order_items
+    // Créer les order_items
     for (const { product, quantity, subtotal } of itemsMap.values()) {
       await client.query(
         `
@@ -126,7 +120,7 @@ if (!item.quantity || Number(item.quantity) <= 0) {
       );
     }
 
-    // 5️⃣ Créer le shipment (UniUni → pending)
+    // Créer le shipment (UniUni → pending)
     await client.query(
       `
       INSERT INTO shipments (order_id, carrier, status)
@@ -139,38 +133,43 @@ if (!item.quantity || Number(item.quantity) <= 0) {
       throw new Error("STRIPE_NOT_CONFIGURED");
     }
 
-    // 6️⃣ Stripe session
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: productsRes.rows.map((p) => {
-  const item = cartItems.find((i) => Number(i.id) === Number(p.id));
+    // Stripe session — idempotency key basée sur order.id pour éviter
+    // les doubles sessions si le front retry (timeout réseau, double-click, etc.)
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: productsRes.rows.map((p) => {
+          const item = cartItems.find((i) => Number(i.id) === Number(p.id));
 
-  if (!item) {
-    throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${p.id}`);
-  }
+          if (!item) {
+            throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${p.id}`);
+          }
 
-  if (!item.quantity || Number(item.quantity) <= 0) {
-    throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${p.id}`);
-  }
+          if (!item.quantity || Number(item.quantity) <= 0) {
+            throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${p.id}`);
+          }
 
-  return {
-    price_data: {
-      currency: "cad",
-      product_data: { name: p.name },
-      unit_amount: p.price_cents,
-    },
-    quantity: Number(item.quantity),
-  };
-}),
-
-      success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-      metadata: {
-        order_id: order.id.toString(),
-        user_id: userId.toString(),
+          return {
+            price_data: {
+              currency: "cad",
+              product_data: { name: p.name },
+              unit_amount: p.price_cents,
+            },
+            quantity: Number(item.quantity),
+          };
+        }),
+        success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+        metadata: {
+          order_id: order.id.toString(),
+          user_id: userId.toString(),
+        },
       },
-    });
+      {
+        idempotencyKey: `checkout-order-${order.id}`,
+      }
+    );
 
     await client.query("COMMIT");
 
@@ -184,11 +183,13 @@ if (!item.quantity || Number(item.quantity) <= 0) {
   }
 });
 
-
-
+/**
+ * GET /api/checkout/invoice/:sessionId
+ * Confirmation rapide côté client après redirect Stripe.
+ * Reste utile pour l'UX (afficher direct "commande confirmée"),
+ * mais N'EST PLUS la source de vérité — c'est le webhook qui l'est.
+ */
 router.get("/invoice/:sessionId", async (req, res) => {
-  const client = await pool.connect();
-
   try {
     const sessionId = String(req.params.sessionId || "").trim();
 
@@ -196,7 +197,6 @@ router.get("/invoice/:sessionId", async (req, res) => {
       return res.status(503).json({ error: "STRIPE_NOT_CONFIGURED" });
     }
 
-    // 1) Stripe: récupérer la session
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== "paid") {
@@ -206,15 +206,70 @@ router.get("/invoice/:sessionId", async (req, res) => {
       });
     }
 
-    // 2) metadata
     const orderId = Number(session.metadata?.order_id);
     if (!orderId) {
       return res.status(400).json({ error: "MISSING_ORDER_ID_IN_METADATA" });
     }
 
+    // On ne fait plus l'update ici — le webhook s'en charge déjà
+    // (ou s'en chargera dans les secondes qui suivent). On lit juste l'état.
+    const orderRes = await pool.query(`SELECT status FROM orders WHERE id=$1`, [orderId]);
+
+    res.json({
+      status: "ok",
+      orderId,
+      orderStatus: orderRes.rows[0]?.status || "pending",
+    });
+  } catch (err) {
+    console.error("Invoice error:", err);
+    return res.status(500).json({ error: "INVOICE_FAILED" });
+  }
+});
+
+/**
+ * POST /api/checkout/webhook
+ * Source de vérité pour la confirmation de paiement.
+ * ⚠️ Doit recevoir le RAW body (pas express.json()) — voir app.js.
+ */
+router.post("/webhook", async (req, res) => {
+    console.log("🔔 WEBHOOK HIT"); // ← ajoute ça en tout premier
+
+  if (!stripe) {
+    return res.status(503).send("STRIPE_NOT_CONFIGURED");
+  }
+
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body, // doit être le raw Buffer, pas du JSON parsé
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type !== "checkout.session.completed") {
+    // On accuse réception mais on ignore les events qu'on ne traite pas
+    return res.json({ received: true });
+  }
+
+  const session = event.data.object;
+  const client = await pool.connect();
+
+  try {
+    const orderId = Number(session.metadata?.order_id);
+    if (!orderId) {
+      console.error("Webhook: MISSING_ORDER_ID_IN_METADATA", session.id);
+      return res.status(400).send("MISSING_ORDER_ID_IN_METADATA");
+    }
+
     await client.query("BEGIN");
 
-    // 3) Anti-double: si déjà payé -> on renvoie ok
+    // Anti-double: si déjà payé -> on renvoie ok sans rien refaire
     const existingPayment = await client.query(
       `SELECT id FROM payments WHERE provider='stripe' AND provider_payment_id=$1 LIMIT 1`,
       [session.payment_intent]
@@ -222,13 +277,11 @@ router.get("/invoice/:sessionId", async (req, res) => {
 
     if (existingPayment.rows.length > 0) {
       await client.query("ROLLBACK");
-      return res.json({ status: "ok", orderId, alreadyProcessed: true });
+      return res.json({ received: true, alreadyProcessed: true });
     }
 
-    // 4) Update order
     await client.query(`UPDATE orders SET status='paid' WHERE id=$1`, [orderId]);
 
-    // 5) Insert payment
     await client.query(
       `
       INSERT INTO payments (
@@ -243,35 +296,24 @@ router.get("/invoice/:sessionId", async (req, res) => {
       [orderId, Number(session.amount_total || 0), session.payment_intent]
     );
 
- await client.query("COMMIT");
+    await client.query("COMMIT");
+    console.log("✅ Webhook: payment saved, calling Telegram for order", orderId); // ← ajoute ça
 
-// 🔔 Telegram
-try {
-  await telegramService.sendOrderNotification(orderId);
-} catch (e) {
-  console.warn("Telegram notification failed:", e.message);
-}
 
-res.json({ status: "ok", orderId });
-
-  } catch (err) {
     try {
-      await client.query("ROLLBACK");
-    } catch {}
+      await telegramService.sendOrderNotification(orderId);
+    } catch (e) {
+      console.warn("Telegram notification failed:", e.message);
+    }
 
-    console.error("Invoice error:", err);
-
-    return res.status(500).json({
-      error: "INVOICE_FAILED",
-      message: err.message,
-      code: err.code,
-      type: err.type,
-    });
+    res.json({ received: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Webhook handler error:", err);
+    res.status(500).send("WEBHOOK_HANDLER_FAILED");
   } finally {
     client.release();
   }
 });
-
-
 
 module.exports = router;
