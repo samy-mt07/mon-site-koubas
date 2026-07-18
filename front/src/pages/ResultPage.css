@@ -1,0 +1,74 @@
+.resultPage {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 6vw;
+  background: #fffcf1;
+}
+
+.resultStatus {
+  color: #6b7280;
+  font-size: 1.05rem;
+}
+
+.resultCard {
+  max-width: 480px;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #efe6d3;
+  border-radius: 28px;
+  padding: 2.5rem;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+}
+
+.resultCard h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  margin: 0 0 0.75rem;
+  color: #2f2a22;
+}
+
+.resultCard p {
+  color: #4b463f;
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+.resultCardSuccess {
+  border-color: #cfe3c7;
+}
+
+.resultCardError {
+  border-color: #e3a08a;
+}
+
+.resultDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: #f6f2eb;
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  color: #2f2a22;
+}
+
+.resultButton {
+  display: inline-flex;
+  padding: 0.95rem 1.75rem;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.resultButton:hover {
+  transform: translateY(-1px);
+  background-color: #2f2a22;
+}

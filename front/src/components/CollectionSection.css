@@ -1,0 +1,114 @@
+.collectionSection {
+  scroll-margin-top: 96px;
+  padding: 5rem 6vw 5rem;
+  background: #fffcf1;
+  color: #2f2a22;
+}
+
+.collectionHeader {
+  max-width: 760px;
+  margin: 0 auto 2.5rem;
+  text-align: center;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #8c7446;
+  margin-bottom: 0.6rem;
+}
+
+.collectionHeader h1 {
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  margin: 0 0 0.8rem;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.collectionIntro {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #4b463f;
+}
+
+.productsStatus {
+  color: #6b7280;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.productsGrid {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.productCardSkeleton {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #efe6d3;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  padding-bottom: 1.2rem;
+}
+
+.skeletonImage {
+  height: 260px;
+  background: linear-gradient(90deg, #f2ead9 25%, #efe6d3 37%, #f2ead9 63%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.4s ease infinite;
+}
+
+.skeletonLine {
+  height: 14px;
+  margin: 1rem 1.2rem 0;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f2ead9 25%, #efe6d3 37%, #f2ead9 63%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.4s ease infinite;
+}
+
+.skeletonLineWide {
+  width: 70%;
+}
+
+.skeletonLineNarrow {
+  width: 40%;
+}
+
+.skeletonButton {
+  height: 42px;
+  margin: 1rem 1.2rem 0;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #f2ead9 25%, #efe6d3 37%, #f2ead9 63%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.4s ease infinite;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+@media (max-width: 1100px) {
+  .productsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .collectionSection {
+    padding: 3.5rem 5vw 3.5rem;
+  }
+
+  .productsGrid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+}

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import RegisterCard from "./RegisterCard";
+import { useAuth } from "../context/AuthContext";
 import "./AuthCard.css";
 
-function AuthCard({ onClose, onLogin }) {
+function AuthCard({ onClose, onAuthenticated }) {
+  const { login } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -33,10 +35,8 @@ function AuthCard({ onClose, onLogin }) {
         throw new Error(data.error || "Erreur lors de la connexion.");
       }
 
-      const user = data.user || null;
-      if (typeof onLogin === "function") {
-        onLogin(user);
-      }
+      login(data.user || null, data.token || null);
+      onAuthenticated?.(data.user || null);
     } catch (err) {
       setError(err.message || "Erreur réseau.");
     } finally {
@@ -115,7 +115,7 @@ function AuthCard({ onClose, onLogin }) {
             </div>
 
             <div className="authPanel authPanelRight">
-              <RegisterCard />
+              <RegisterCard onAuthenticated={onAuthenticated} />
             </div>
           </div>
         </div>

@@ -1,12 +1,22 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { User, ShoppingCart, LogOut } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, User, ShoppingCart, LogOut } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 import styles from "./Navbar.module.css";
 
-function Navbar({ isLoggedIn, onUserClick, onLogout, cartItems = [] }) {
+function Navbar({ onUserClick }) {
+  const { isLoggedIn, logout } = useAuth();
+  const { totalCount, openDrawer } = useCart();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const cartCount = Array.isArray(cartItems) ? cartItems.reduce((sum, item) => sum + Number(item?.quantity || 0), 0) : 0;
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollectionVisible, setIsCollectionVisible] = useState(false);
+  const isCollectionActive = location.pathname === "/" && isCollectionVisible;
+  const observerRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,6 +28,40 @@ function Navbar({ isLoggedIn, onUserClick, onLogout, cartItems = [] }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+
+    if (location.pathname !== "/") {
+      return;
+    }
+
+    const el = document.getElementById("collection");
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsCollectionVisible(entry.isIntersecting),
+      { threshold: 0.4 }
+    );
+    observer.observe(el);
+    observerRef.current = observer;
+
+    return () => observer.disconnect();
+  }, [location.pathname]);
+
+  const goToCollection = (event) => {
+    event.preventDefault();
+    setIsMobileMenuOpen(false);
+
+    if (location.pathname === "/") {
+      document.getElementById("collection")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      navigate("/", { state: { scrollTo: "collection" } });
+    }
+  };
+
   return (
     <nav className={`${styles.navbar} ${isScrolled ? styles.scrolled : ""}`}>
       <div className={styles.inner}>
@@ -27,7 +71,13 @@ function Navbar({ isLoggedIn, onUserClick, onLogout, cartItems = [] }) {
 
         <ul className={styles.navLinks}>
           <li>
-            <Link to="/products">Collection</Link>
+            <a
+              href="#collection"
+              className={isCollectionActive ? styles.activeLink : ""}
+              onClick={goToCollection}
+            >
+              Ma Collection
+            </a>
           </li>
           <li>
             <a href="#story">Notre Histoire</a>
@@ -62,51 +112,55 @@ function Navbar({ isLoggedIn, onUserClick, onLogout, cartItems = [] }) {
             type="button"
             className={styles.cartButton}
             aria-label="Mon panier"
-            onClick={() => {
-              fetch("/api/orders/checkout", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  customer: {
-                    full_name: "Client",
-                    email: "client@example.com",
-                  },
-                  cart: cartItems.map((item) => ({
-                    product_id: item.id,
-                    quantity: Number(item.quantity || 1),
-                  })),
-                  shipping: {
-                    full_name: "Client",
-                    phone: "0000000000",
-                    address1: "1 rue de test",
-                    city: "Montréal",
-                    postal_code: "H1H1H1",
-                    country: "Canada",
-                  },
-                }),
-              })
-                .then(async (response) => {
-                  const data = await response.json();
-                  if (!response.ok) {
-                    throw new Error(data?.error || "Impossible d’ouvrir le panier.");
-                  }
-                  return data;
-                })
-                .then((data) => {
-                  window.alert(`Commande créée avec succès : ${data.order_id || "n/a"}`);
-                })
-                .catch((error) => {
-                  window.alert(error.message || "Impossible d’ouvrir le panier pour le moment.");
-                });
-            }}
+            onClick={openDrawer}
           >
             <ShoppingCart size={20} />
-            {cartCount > 0 && <span className={styles.badge}>{cartCount}</span>}
+            {totalCount > 0 && <span className={styles.badge}>{totalCount}</span>}
+          </button>
+          <button
+            type="button"
+            className={styles.menuToggle}
+            aria-label={isMobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            onClick={() => setIsMobileMenuOpen((value) => !value)}
+          >
+            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <ul className={styles.mobileNavLinks}>
+          <li>
+            <a
+              href="#collection"
+              className={isCollectionActive ? styles.activeLink : ""}
+              onClick={goToCollection}
+            >
+              Ma Collection
+            </a>
+          </li>
+          <li>
+            <a href="#story" onClick={() => setIsMobileMenuOpen(false)}>
+              Notre Histoire
+            </a>
+          </li>
+          <li>
+            <a href="#gifts" onClick={() => setIsMobileMenuOpen(false)}>
+              Cadeaux
+            </a>
+          </li>
+          <li>
+            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)}>
+              Blog
+            </a>
+          </li>
+          <li>
+            <a href="#contact" onClick={() => setIsMobileMenuOpen(false)}>
+              Contact
+            </a>
+          </li>
+        </ul>
+      )}
 
       {showLogoutModal && (
         <div className={styles.modalOverlay}>
@@ -125,7 +179,7 @@ function Navbar({ isLoggedIn, onUserClick, onLogout, cartItems = [] }) {
                 className={styles.modalConfirmButton}
                 onClick={() => {
                   setShowLogoutModal(false);
-                  onLogout?.();
+                  logout();
                 }}
               >
                 Oui

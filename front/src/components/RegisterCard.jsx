@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
-function RegisterCard() {
+function RegisterCard({ onAuthenticated }) {
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,11 +49,13 @@ function RegisterCard() {
         throw new Error(data.error || "Erreur lors de l'inscription.");
       }
 
-      setSuccess("Inscription réussie ! Vous pouvez maintenant vous connecter.");
+      setSuccess("Inscription réussie !");
       setName("");
       setEmail("");
       setPassword("");
       setConfirmPassword("");
+      login(data.user || null, data.token || null);
+      onAuthenticated?.(data.user || null);
     } catch (err) {
       setError(err.message || "Erreur réseau.");
     } finally {
