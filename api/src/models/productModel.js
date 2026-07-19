@@ -31,7 +31,7 @@ const upload = multer({
   },
 });
 // Diminue le stock d'un produit (si assez de stock)
-async function decreaseStock(productId, quantity) {
+async function decreaseStock(productId, quantity, client = pool) {
   const query = `
     UPDATE products
     SET stock_quantity = stock_quantity - $1
@@ -40,7 +40,7 @@ async function decreaseStock(productId, quantity) {
   `;
   const values = [quantity, productId];
 
-  const result = await pool.query(query, values);
+  const result = await client.query(query, values);
   return result.rows[0] || null; // null = pas assez de stock
 }
 

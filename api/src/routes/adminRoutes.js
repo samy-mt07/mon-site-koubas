@@ -4,6 +4,7 @@ const pool = require("../config/db");
 const auth = require("../middlewares/authMiddleware");
 const admin = require("../middlewares/adMiddleware");
 const { upload } = require("../models/productModel");
+const { setFreeDelivery } = require("../services/settingsStore");
 
 // GET /api/admin/orders
 router.get("/orders", auth, admin, async (req, res) => {
@@ -46,6 +47,7 @@ router.post("/products", auth, admin, async (req, res) => {
       price_cents,
       image_url,
       is_active = true,
+      stock_quantity,
     } = req.body;
 
     if (!name || price_cents === undefined || price_cents === null) {
@@ -57,13 +59,21 @@ router.post("/products", auth, admin, async (req, res) => {
       return res.status(400).json({ error: "INVALID_PRICE" });
     }
 
+    let parsedStock = 0;
+    if (stock_quantity !== undefined && stock_quantity !== null && stock_quantity !== "") {
+      parsedStock = Number(stock_quantity);
+      if (!Number.isInteger(parsedStock) || parsedStock < 0) {
+        return res.status(400).json({ error: "INVALID_STOCK_QUANTITY" });
+      }
+    }
+
     const result = await pool.query(
       `
-        INSERT INTO products (name, description, price_cents, image_url, is_active)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, name, description, price_cents, image_url, is_active, created_at
+        INSERT INTO products (name, description, price_cents, image_url, is_active, stock_quantity)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, name, description, price_cents, image_url, is_active, stock_quantity, created_at
       `,
-      [name, description || null, parsedPrice, image_url || null, is_active]
+      [name, description || null, parsedPrice, image_url || null, is_active, parsedStock]
     );
 
     res.status(201).json(result.rows[0]);
@@ -107,7 +117,7 @@ router.delete("/orders/:id", auth, admin, async (req, res) => {
 router.get("/products", auth, admin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, description, price_cents, image_url, is_active, created_at
+      SELECT id, name, description, price_cents, image_url, is_active, stock_quantity, created_at
       FROM products
       ORDER BY created_at DESC
     `);
@@ -122,7 +132,7 @@ router.get("/products", auth, admin, async (req, res) => {
 router.put("/products/:id", auth, admin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price_cents, image_url, is_active } = req.body;
+    const { name, description, price_cents, image_url, is_active, stock_quantity } = req.body;
 
     if (!name || price_cents === undefined || price_cents === null) {
       return res.status(400).json({ error: "NAME_AND_PRICE_REQUIRED" });
@@ -133,14 +143,22 @@ router.put("/products/:id", auth, admin, async (req, res) => {
       return res.status(400).json({ error: "INVALID_PRICE" });
     }
 
+    let parsedStock = 0;
+    if (stock_quantity !== undefined && stock_quantity !== null && stock_quantity !== "") {
+      parsedStock = Number(stock_quantity);
+      if (!Number.isInteger(parsedStock) || parsedStock < 0) {
+        return res.status(400).json({ error: "INVALID_STOCK_QUANTITY" });
+      }
+    }
+
     const result = await pool.query(
       `
         UPDATE products
-        SET name = $1, description = $2, price_cents = $3, image_url = $4, is_active = $5
-        WHERE id = $6
-        RETURNING id, name, description, price_cents, image_url, is_active, created_at
+        SET name = $1, description = $2, price_cents = $3, image_url = $4, is_active = $5, stock_quantity = $6
+        WHERE id = $7
+        RETURNING id, name, description, price_cents, image_url, is_active, stock_quantity, created_at
       `,
-      [name, description || null, parsedPrice, image_url || null, is_active, id]
+      [name, description || null, parsedPrice, image_url || null, is_active, parsedStock, id]
     );
 
     if (result.rowCount === 0) {
@@ -170,6 +188,18 @@ router.delete("/products/:id", auth, admin, async (req, res) => {
     console.error("ADMIN delete product error:", err);
     res.status(500).json({ error: "DB_ERROR" });
   }
+});
+
+// PATCH /api/admin/settings/free-delivery
+router.patch("/settings/free-delivery", auth, admin, (req, res) => {
+  const { enabled } = req.body;
+
+  if (typeof enabled !== "boolean") {
+    return res.status(400).json({ error: "INVALID_ENABLED_VALUE" });
+  }
+
+  const freeDelivery = setFreeDelivery(enabled);
+  res.json({ freeDelivery });
 });
 
 module.exports = router;

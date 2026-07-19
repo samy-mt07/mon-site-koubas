@@ -3,7 +3,7 @@ const pool = require("../config/db");
 async function getAllProducts(req, res, next) {
   try {
     const result = await pool.query(
-      `SELECT id, name, description, price_cents, image_url, is_active, created_at
+      `SELECT id, name, description, price_cents, image_url, is_active, stock_quantity, created_at
              FROM products
              WHERE is_active = TRUE
              ORDER BY created_at DESC`

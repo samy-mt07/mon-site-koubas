@@ -19,6 +19,7 @@ import {
   Upload,
   Pencil,
 } from "lucide-react";
+import FreeDeliveryToggle from "../components/FreeDeliveryToggle";
 
 /**
  * AdminDashboard — koubas
@@ -367,6 +368,7 @@ const EMPTY_FORM = {
   price_cents: "",
   image_url: "",
   is_active: true,
+  stock_quantity: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -451,6 +453,7 @@ function ProductsView({ onAddNew }) {
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <th className="px-4 py-3">Produit</th>
               <th className="px-4 py-3">Prix</th>
+              <th className="px-4 py-3">Stock</th>
               <th className="px-4 py-3">Statut</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -459,7 +462,7 @@ function ProductsView({ onAddNew }) {
             {loading &&
               Array.from({ length: 4 }).map((_, i) => (
                 <tr key={i}>
-                  <td colSpan={4} className="px-4 py-4">
+                  <td colSpan={5} className="px-4 py-4">
                     <div className="h-4 w-full max-w-sm animate-pulse rounded bg-slate-100" />
                   </td>
                 </tr>
@@ -467,7 +470,7 @@ function ProductsView({ onAddNew }) {
 
             {!loading && products.length === 0 && !error && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
                   Aucun produit pour le moment.
                 </td>
               </tr>
@@ -490,6 +493,16 @@ function ProductsView({ onAddNew }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-900">{formatPrice(p.price_cents)}</td>
+                  <td className="px-4 py-3">
+                    {Number(p.stock_quantity) === 0 ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600">
+                        <AlertTriangle size={13} />
+                        Rupture de stock
+                      </span>
+                    ) : (
+                      <span className="font-medium text-slate-800">{p.stock_quantity}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
@@ -556,6 +569,7 @@ function EditProductDrawer({ product, onClose, onUpdated }) {
         price_cents: product.price_cents ?? "",
         image_url: product.image_url || "",
         is_active: product.is_active,
+        stock_quantity: product.stock_quantity ?? 0,
       });
       setError(null);
     }
@@ -581,6 +595,12 @@ function EditProductDrawer({ product, onClose, onUpdated }) {
       return;
     }
 
+    const stockValue = Number(form.stock_quantity);
+    if (!Number.isInteger(stockValue) || stockValue < 0) {
+      setError("La quantité en stock doit être un entier positif.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/products/${product.id}`, {
@@ -592,6 +612,7 @@ function EditProductDrawer({ product, onClose, onUpdated }) {
           price_cents: priceValue,
           image_url: form.image_url.trim() || null,
           is_active: form.is_active,
+          stock_quantity: stockValue,
         }),
       });
       const data = await res.json();
@@ -662,17 +683,31 @@ function EditProductDrawer({ product, onClose, onUpdated }) {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.is_active}
-                  onChange={(e) => updateField("is_active", e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
-                />
-                Produit actif
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Quantité en stock <span className="text-rose-600">*</span>
               </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.stock_quantity}
+                onChange={(e) => updateField("stock_quantity", e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
             </div>
+          </div>
+
+          <div className="flex items-end pb-1">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={(e) => updateField("is_active", e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
+              />
+              Produit actif
+            </label>
           </div>
 
           <div>
@@ -848,6 +883,12 @@ function NewProductView({ onCreated }) {
       return;
     }
 
+    const stockValue = Number(form.stock_quantity);
+    if (!Number.isInteger(stockValue) || stockValue < 0) {
+      setError("La quantité en stock doit être un entier positif.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/products`, {
@@ -859,6 +900,7 @@ function NewProductView({ onCreated }) {
           price_cents: priceValue,
           image_url: form.image_url.trim() || null,
           is_active: form.is_active,
+          stock_quantity: stockValue,
         }),
       });
 
@@ -943,17 +985,32 @@ function NewProductView({ onCreated }) {
             )}
           </div>
 
-          <div className="flex items-end pb-1">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => updateField("is_active", e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
-              />
-              Produit actif
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Quantité en stock <span className="text-rose-600">*</span>
             </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={form.stock_quantity}
+              onChange={(e) => updateField("stock_quantity", e.target.value)}
+              placeholder="Ex. 20"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            />
           </div>
+        </div>
+
+        <div className="flex items-end pb-1">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => updateField("is_active", e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/30"
+            />
+            Produit actif
+          </label>
         </div>
 
         <div>
@@ -1025,9 +1082,12 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <header className="mb-8">
-          <h1 className="text-xl font-bold text-slate-900">koubas · Admin</h1>
-          <p className="text-sm text-slate-500">Gestion des commandes et du catalogue</p>
+        <header className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">koubas · Admin</h1>
+            <p className="text-sm text-slate-500">Gestion des commandes et du catalogue</p>
+          </div>
+          <FreeDeliveryToggle />
         </header>
 
         <nav className="mb-6 flex gap-1 rounded-lg bg-slate-100 p-1 w-fit">

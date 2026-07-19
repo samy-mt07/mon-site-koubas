@@ -99,6 +99,12 @@
   transform: translateY(-1px);
 }
 
+.productButton:disabled {
+  background: #c9c9c9;
+  cursor: not-allowed;
+  transform: none;
+}
+
 @media (max-width: 680px) {
   .productImageWrapper {
     height: 220px;

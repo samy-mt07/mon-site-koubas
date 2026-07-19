@@ -5,10 +5,18 @@ const pool = require("../config/db");
 const authMiddleware = require("../middlewares/authMiddleware");
 const telegramService = require("../services/telegramService");
 const { sendOrderConfirmationEmail } = require("../services/emailService");
+const { decreaseStock } = require("../models/productModel");
+const { calculateOrderTotals } = require("../services/orderPricing");
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
+
+const PRICING_ERROR_STATUSES = {
+  EMPTY_CART: 400,
+  INVALID_PRODUCTS: 400,
+  INVALID_QUANTITY: 400,
+};
 
 /**
  * Charge une commande payée pour l'email de confirmation.
@@ -87,6 +95,42 @@ async function loadOrderForConfirmationEmail(orderId) {
   };
 }
 
+/**
+ * POST /api/checkout/preview
+ * Public — calcule le sous-total, les frais de livraison et le total sans
+ * rien créer côté serveur (pas de commande, pas de session Stripe). Sert
+ * de récapitulatif avant paiement, avec la même fonction de calcul que
+ * /create-session pour garantir qu'ils ne divergent jamais.
+ */
+router.post("/preview", async (req, res) => {
+  try {
+    const { cartItems, address } = req.body;
+
+    const { subtotal, deliveryFee, total, freeDelivery, items } = await calculateOrderTotals(
+      cartItems,
+      address
+    );
+
+    res.json({
+      subtotal,
+      deliveryFee,
+      total,
+      freeDelivery,
+      items: items.map(({ product, quantity, subtotal: itemSubtotal }) => ({
+        id: product.id,
+        name: product.name,
+        price_cents: product.price_cents,
+        quantity,
+        subtotal: itemSubtotal,
+      })),
+    });
+  } catch (err) {
+    const status = PRICING_ERROR_STATUSES[err.code] || 400;
+    console.error("Checkout preview error:", err);
+    res.status(status).json({ error: err.code || "PREVIEW_FAILED" });
+  }
+});
+
 router.post("/create-session", authMiddleware, async (req, res) => {
   const client = await pool.connect();
 
@@ -111,40 +155,43 @@ router.post("/create-session", authMiddleware, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Charger les produits
-    const productIds = cartItems.map((i) => i.id);
-    const productsRes = await client.query(
-      `SELECT * FROM products WHERE id = ANY($1::bigint[]) AND is_active = true`,
-      [productIds]
-    );
-
-    if (productsRes.rows.length !== cartItems.length) {
-      throw new Error("INVALID_PRODUCTS");
+    // Sous-total, frais de livraison et total — même fonction que /checkout/preview,
+    // pour que l'aperçu et la charge réelle ne puissent jamais diverger.
+    let totals;
+    try {
+      totals = await calculateOrderTotals(cartItems, shipping, client);
+    } catch (pricingErr) {
+      await client.query("ROLLBACK");
+      const status = PRICING_ERROR_STATUSES[pricingErr.code] || 400;
+      return res.status(status).json({ error: pricingErr.code || "INVALID_PRODUCTS" });
     }
 
-    // Calcul du total
-    let totalCents = 0;
-    const itemsMap = new Map();
+    const { total, deliveryFee: shippingFeeCents, items } = totals;
+    const totalCents = total;
 
-    for (const product of productsRes.rows) {
-      const item = cartItems.find((i) => Number(i.id) === Number(product.id));
-
-      if (!item) {
-        throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${product.id}`);
+    // Vérifier le stock disponible avant de réserver quoi que ce soit
+    for (const { product, quantity } of items) {
+      if (product.stock_quantity < quantity) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          error: "INSUFFICIENT_STOCK",
+          product_id: product.id,
+          available: product.stock_quantity,
+        });
       }
+    }
 
-      if (!item.quantity || Number(item.quantity) <= 0) {
-        throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${product.id}`);
+    // Décrémenter le stock (conditionnel, protège contre les races)
+    for (const { product, quantity } of items) {
+      const updated = await decreaseStock(product.id, quantity, client);
+      if (!updated) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          error: "INSUFFICIENT_STOCK",
+          product_id: product.id,
+          available: product.stock_quantity,
+        });
       }
-
-      const subtotal = product.price_cents * item.quantity;
-      totalCents += subtotal;
-
-      itemsMap.set(product.id, {
-        product,
-        quantity: item.quantity,
-        subtotal,
-      });
     }
 
     // Créer la commande
@@ -182,7 +229,7 @@ router.post("/create-session", authMiddleware, async (req, res) => {
     const order = orderRes.rows[0];
 
     // Créer les order_items
-    for (const { product, quantity, subtotal } of itemsMap.values()) {
+    for (const { product, quantity, subtotal } of items) {
       await client.query(
         `
         INSERT INTO order_items (
@@ -217,26 +264,27 @@ router.post("/create-session", authMiddleware, async (req, res) => {
       {
         mode: "payment",
         payment_method_types: ["card"],
-        line_items: productsRes.rows.map((p) => {
-          const item = cartItems.find((i) => Number(i.id) === Number(p.id));
-
-          if (!item) {
-            throw new Error(`CART_ITEM_NOT_FOUND_FOR_PRODUCT_${p.id}`);
-          }
-
-          if (!item.quantity || Number(item.quantity) <= 0) {
-            throw new Error(`INVALID_QUANTITY_FOR_PRODUCT_${p.id}`);
-          }
-
-          return {
-            price_data: {
-              currency: "cad",
-              product_data: { name: p.name },
-              unit_amount: p.price_cents,
-            },
-            quantity: Number(item.quantity),
-          };
-        }),
+        line_items: items.map(({ product: p, quantity }) => ({
+          price_data: {
+            currency: "cad",
+            product_data: { name: p.name },
+            unit_amount: p.price_cents,
+          },
+          quantity: Number(quantity),
+        })).concat(
+          shippingFeeCents > 0
+            ? [
+                {
+                  price_data: {
+                    currency: "cad",
+                    product_data: { name: "Livraison" },
+                    unit_amount: shippingFeeCents,
+                  },
+                  quantity: 1,
+                },
+              ]
+            : []
+        ),
         success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.FRONTEND_URL}/cancel`,
         metadata: {

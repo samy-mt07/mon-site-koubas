@@ -1,6 +1,8 @@
 // /home/samy/mon-site-koubas/api/src/controllers/orderController.js
 const pool = require("../config/env").db ? require("../config/db") : null // Assurez-vous que la configuration de la base de données est correctement importée;
 
+// Legacy/unused: route unmounted in app.js (mock-provider checkout, retired pre-production).
+// Not updated with stock tracking since it's not part of the active checkout flow.
 async function checkout(req, res) {
   const client = await pool.connect();
 

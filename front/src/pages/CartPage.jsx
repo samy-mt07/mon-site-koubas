@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useProducts, resolveImageUrl, formatPrice } from "../context/ProductsContext";
+import FreeDeliveryBanner from "../components/FreeDeliveryBanner";
 import "./CartPage.css";
 
 function CartPage() {
@@ -30,84 +31,92 @@ function CartPage() {
 
   return (
     <div className="cartPage">
-      <h1>Mon panier</h1>
+      <div className="cartPageContainer">
+        <h1>Mon panier</h1>
 
-      <div className="cartItems">
-        {items.map((item) => {
-          const isUnavailable = unavailableIds.includes(item.id);
-          const maxQuantity = Number.isFinite(item.stock) && item.stock > 0 ? item.stock : 20;
+        <div className="cartGrid">
+          <div className="cartMain">
+            <FreeDeliveryBanner />
 
-          return (
-            <div key={item.id} className={`cartRow ${isUnavailable ? "cartRowUnavailable" : ""}`}>
-              <div className="cartRowImageWrapper">
-                {item.image_url ? (
-                  <img src={resolveImageUrl(item.image_url)} alt={item.name} className="cartRowImage" />
-                ) : (
-                  <div className="cartRowPlaceholder" />
-                )}
-              </div>
+            <div className="cartItems">
+              {items.map((item) => {
+                const isUnavailable = unavailableIds.includes(item.id);
+                const maxQuantity = Number.isFinite(item.stock) && item.stock > 0 ? item.stock : 20;
 
-              <div className="cartRowInfo">
-                <span className="cartRowName">{item.name}</span>
-                <span className="cartRowUnitPrice">{formatPrice(item.price_cents)} / unité</span>
-                {isUnavailable && (
-                  <span className="cartRowWarning">
-                    Ce produit n'est plus disponible. Merci de le retirer du panier.
-                  </span>
-                )}
-              </div>
+                return (
+                  <div key={item.id} className={`cartRow ${isUnavailable ? "cartRowUnavailable" : ""}`}>
+                    <div className="cartRowImageWrapper">
+                      {item.image_url ? (
+                        <img src={resolveImageUrl(item.image_url)} alt={item.name} className="cartRowImage" />
+                      ) : (
+                        <div className="cartRowPlaceholder" />
+                      )}
+                    </div>
 
-              <div className="cartRowQuantity">
-                <button
-                  type="button"
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  disabled={item.quantity <= 1}
-                >
-                  −
-                </button>
-                <span>{item.quantity}</span>
-                <button
-                  type="button"
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  disabled={item.quantity >= maxQuantity}
-                >
-                  +
-                </button>
-              </div>
+                    <div className="cartRowInfo">
+                      <span className="cartRowName">{item.name}</span>
+                      <span className="cartRowUnitPrice">{formatPrice(item.price_cents)} / unité</span>
+                      {isUnavailable && (
+                        <span className="cartRowWarning">
+                          Ce produit n'est plus disponible. Merci de le retirer du panier.
+                        </span>
+                      )}
+                    </div>
 
-              <div className="cartRowSubtotal">{formatPrice(item.price_cents * item.quantity)}</div>
+                    <div className="cartRowQuantity">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                      >
+                        −
+                      </button>
+                      <span>{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        disabled={item.quantity >= maxQuantity}
+                      >
+                        +
+                      </button>
+                    </div>
 
-              <button
-                type="button"
-                className="cartRowRemove"
-                onClick={() => removeItem(item.id)}
-                aria-label="Supprimer"
-              >
-                <Trash2 size={18} />
-              </button>
+                    <div className="cartRowSubtotal">{formatPrice(item.price_cents * item.quantity)}</div>
+
+                    <button
+                      type="button"
+                      className="cartRowRemove"
+                      onClick={() => removeItem(item.id)}
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      <div className="cartSummary">
-        <div className="cartTotal">
-          <span>Total</span>
-          <span>{formatPrice(totalCents)}</span>
+          <aside className="cartSummary">
+            <div className="cartTotal">
+              <span>Total</span>
+              <span>{formatPrice(totalCents)}</span>
+            </div>
+            <button
+              type="button"
+              className="cartCheckoutButton"
+              disabled={!canCheckout}
+              onClick={() => navigate("/checkout")}
+            >
+              PASSER AU CHECKOUT
+            </button>
+            {!canCheckout && items.length > 0 && (
+              <p className="cartCheckoutHint">
+                Retirez les produits indisponibles pour continuer.
+              </p>
+            )}
+          </aside>
         </div>
-        <button
-          type="button"
-          className="cartCheckoutButton"
-          disabled={!canCheckout}
-          onClick={() => navigate("/checkout")}
-        >
-          PASSER AU CHECKOUT
-        </button>
-        {!canCheckout && items.length > 0 && (
-          <p className="cartCheckoutHint">
-            Retirez les produits indisponibles pour continuer.
-          </p>
-        )}
       </div>
     </div>
   );

@@ -5,6 +5,12 @@
   padding: 3rem 6vw 5rem;
 }
 
+.checkoutPageContainer {
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+}
+
 .checkoutPage h1 {
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(2rem, 3.2vw, 2.6rem);
@@ -12,7 +18,6 @@
 }
 
 .checkoutWarning {
-  max-width: 900px;
   background: #fdf3ef;
   border: 1px solid #e3a08a;
   color: #8a3a26;
@@ -34,7 +39,6 @@
 }
 
 .checkoutGrid {
-  max-width: 1000px;
   display: grid;
   grid-template-columns: 1.5fr 1fr;
   gap: 2.5rem;

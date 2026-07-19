@@ -10,8 +10,11 @@ function ProductCard({ product }) {
   const { addItem } = useCart();
   const { showToast } = useToast();
 
+  const isOutOfStock = Number(product.stock_quantity) <= 0;
+
   const handleAddToCart = (event) => {
     event.stopPropagation();
+    if (isOutOfStock) return;
     addItem(product, 1);
     showToast("Ajouté au panier !");
   };
@@ -45,8 +48,13 @@ function ProductCard({ product }) {
           <span className="ratingCount">(59)</span>
         </div>
       </div>
-      <button type="button" className="productButton" onClick={handleAddToCart}>
-        AJOUTER AU PANIER
+      <button
+        type="button"
+        className="productButton"
+        onClick={handleAddToCart}
+        disabled={isOutOfStock}
+      >
+        {isOutOfStock ? "RUPTURE DE STOCK" : "AJOUTER AU PANIER"}
       </button>
     </article>
   );

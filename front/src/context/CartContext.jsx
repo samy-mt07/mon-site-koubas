@@ -39,7 +39,7 @@ export function CartProvider({ children }) {
 
   const addItem = (product, quantity = 1) => {
     setItems((current) => {
-      const stock = Number.isFinite(Number(product.stock)) ? Number(product.stock) : undefined;
+      const stock = Number.isFinite(Number(product.stock_quantity)) ? Number(product.stock_quantity) : undefined;
       const existing = current.find((item) => item.id === product.id);
 
       if (existing) {
