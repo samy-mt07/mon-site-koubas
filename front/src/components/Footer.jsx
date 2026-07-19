@@ -1,13 +1,14 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 import "./Footer.css";
 
 // TODO: remplace ces valeurs par tes vraies coordonnées avant la mise en ligne.
 const CONTACT_EMAIL = "contact@aurassens.shop";
 const SOCIAL_LINKS = [
-  { label: "Instagram", href: "https://instagram.com/aurascents" },
-  { label: "TikTok", href: "https://tiktok.com/@aurascents" },
-  { label: "Facebook", href: "https://facebook.com/aurascents" },
+  { label: "Instagram", href: "https://www.instagram.com/koubascents/" },
+  { label: "TikTok", href: "https://www.tiktok.com/@koubascents" },
+  { label: "Facebook", href: "https://www.instagram.com/koubascents/" },
 ];
 
 function Footer() {
@@ -46,6 +47,9 @@ function Footer() {
 
       <div className="siteFooterBottom">
         <span>&copy; {new Date().getFullYear()} Aura Scents. Tous droits réservés.</span>
+        <Link to="/politique-confidentialite" className="siteFooterLegalLink">
+          Politique de confidentialité
+        </Link>
       </div>
     </footer>
   );

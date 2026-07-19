@@ -76,9 +76,23 @@
 .siteFooterBottom {
   border-top: 1px solid rgba(245, 239, 227, 0.12);
   padding: 1.25rem 6vw;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
   font-size: 0.8rem;
   color: #a89c81;
+}
+
+.siteFooterLegalLink {
+  color: #a89c81;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.siteFooterLegalLink:hover {
+  color: #e7d8b8;
 }
 
 @media (max-width: 720px) {
@@ -86,5 +100,10 @@
     grid-template-columns: 1fr;
     gap: 2rem;
     padding: 3rem 6vw 2rem;
+  }
+
+  .siteFooterBottom {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }

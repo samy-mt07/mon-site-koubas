@@ -7,6 +7,8 @@ import { ProductsProvider } from "./context/ProductsContext";
 import { ToastProvider } from "./context/ToastContext";
 import Layout from "./components/layout/Layout";
 import Home from "./pages/Home";
+import AboutStory from "./pages/AboutStory";
+import ComingSoon from "./components/ComingSoon";
 import ProductDetail from "./pages/ProductDetail";
 import CartPage from "./pages/CartPage";
 import OrdersPage from "./pages/OrdersPage";
@@ -15,6 +17,7 @@ import SuccessPage from "./pages/SuccessPage";
 import CancelPage from "./pages/CancelPage";
 import AdminDashBoard from "./pages/AdminDashBoard";
 import OAuthCallback from "./pages/OAuthCallback";
+import DataPolicy from "./components/DataPolicy";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -27,6 +30,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <Routes>
                 <Route element={<Layout />}>
                   <Route path="/" element={<Home />} />
+                  <Route path="/notre-histoire" element={<AboutStory />} />
+                  <Route path="/blog" element={<ComingSoon section="Blog" />} />
+                  <Route path="/cadeaux" element={<ComingSoon section="Cadeaux" />} />
                   <Route path="/produit/:id" element={<ProductDetail />} />
                   <Route path="/panier" element={<CartPage />} />
                   <Route path="/mes-commandes" element={<OrdersPage />} />
@@ -35,6 +41,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                   <Route path="/cancel" element={<CancelPage />} />
                   <Route path="/oauth-callback" element={<OAuthCallback />} />
                   <Route path="/products" element={<Navigate to="/" replace />} />
+                  <Route path="/politique-confidentialite" element={<DataPolicy />} />
                   <Route path="/admin" element={<AdminDashBoard />} />
                 </Route>
               </Routes>

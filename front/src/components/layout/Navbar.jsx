@@ -114,13 +114,13 @@ function Navbar({ onUserClick }) {
             </a>
           </li>
           <li>
-            <a href="#story">Notre Histoire</a>
+            <Link to="/notre-histoire">Notre Histoire</Link>
           </li>
           <li>
-            <a href="#gifts">Cadeaux</a>
+            <Link to="/cadeaux">Cadeaux</Link>
           </li>
           <li>
-            <a href="#blog">Blog</a>
+            <Link to="/blog">Blog</Link>
           </li>
           <li>
             <a href="#contact" onClick={goToContact}>
@@ -201,19 +201,19 @@ function Navbar({ onUserClick }) {
             </a>
           </li>
           <li>
-            <a href="#story" onClick={() => setIsMobileMenuOpen(false)}>
+            <Link to="/notre-histoire" onClick={() => setIsMobileMenuOpen(false)}>
               Notre Histoire
-            </a>
+            </Link>
           </li>
           <li>
-            <a href="#gifts" onClick={() => setIsMobileMenuOpen(false)}>
+            <Link to="/cadeaux" onClick={() => setIsMobileMenuOpen(false)}>
               Cadeaux
-            </a>
+            </Link>
           </li>
           <li>
-            <a href="#blog" onClick={() => setIsMobileMenuOpen(false)}>
+            <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)}>
               Blog
-            </a>
+            </Link>
           </li>
           <li>
             <a href="#contact" onClick={goToContact}>
