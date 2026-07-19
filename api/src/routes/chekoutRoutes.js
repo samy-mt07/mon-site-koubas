@@ -4,10 +4,88 @@ const Stripe = require("stripe");
 const pool = require("../config/db");
 const authMiddleware = require("../middlewares/authMiddleware");
 const telegramService = require("../services/telegramService");
+const { sendOrderConfirmationEmail } = require("../services/emailService");
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
+
+/**
+ * Charge une commande payée pour l'email de confirmation.
+ * Même source que loadOrderForTelegram (telegramService.js) pour l'adresse :
+ * les colonnes shipping_* sont directement sur orders, il n'y a pas d'autre
+ * table pour ça.
+ */
+async function loadOrderForConfirmationEmail(orderId) {
+  const orderRes = await pool.query(
+    `
+    SELECT
+      o.id,
+      o.total_cents,
+      o.shipping_full_name,
+      o.shipping_address1,
+      o.shipping_apartment,
+      o.shipping_city,
+      o.shipping_province,
+      o.shipping_postal_code,
+      o.shipping_country,
+      u.email
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    WHERE o.id = $1
+    `,
+    [orderId]
+  );
+
+  if (orderRes.rows.length === 0) return null;
+
+  const o = orderRes.rows[0];
+
+  const itemsRes = await pool.query(
+    `
+    SELECT
+      COALESCE(p.name, 'Unknown product') AS name,
+      oi.quantity,
+      oi.unit_price_cents
+    FROM order_items oi
+    LEFT JOIN products p ON p.id = oi.product_id
+    WHERE oi.order_id = $1
+    ORDER BY oi.id ASC
+    `,
+    [orderId]
+  );
+
+  const items = itemsRes.rows.map((r) => ({
+    name: r.name,
+    quantity: Number(r.quantity),
+    price: (Number(r.unit_price_cents) / 100).toFixed(2),
+  }));
+
+  const addressLine = [o.shipping_address1, o.shipping_apartment]
+    .filter(Boolean)
+    .join(", ");
+
+  const shippingAddress = [
+    o.shipping_full_name,
+    addressLine,
+    [o.shipping_city, o.shipping_province, o.shipping_postal_code]
+      .filter(Boolean)
+      .join(" "),
+    o.shipping_country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    email: o.email,
+    order: {
+      id: Number(o.id),
+      items,
+      total: (Number(o.total_cents) / 100).toFixed(2),
+      shippingAddress,
+    },
+  };
+}
 
 router.post("/create-session", authMiddleware, async (req, res) => {
   const client = await pool.connect();
@@ -304,6 +382,15 @@ router.post("/webhook", async (req, res) => {
       await telegramService.sendOrderNotification(orderId);
     } catch (e) {
       console.warn("Telegram notification failed:", e.message);
+    }
+
+    try {
+      const confirmation = await loadOrderForConfirmationEmail(orderId);
+      if (confirmation) {
+        await sendOrderConfirmationEmail(confirmation.email, confirmation.order);
+      }
+    } catch (e) {
+      console.warn("Order confirmation email failed:", e.message);
     }
 
     res.json({ received: true });

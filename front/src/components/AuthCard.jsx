@@ -1,16 +1,29 @@
 import React, { useState } from "react";
 import RegisterCard from "./RegisterCard";
+import VerifyCodeCard from "./VerifyCodeCard";
 import { useAuth } from "../context/AuthContext";
 import "./AuthCard.css";
 
-function AuthCard({ onClose, onAuthenticated }) {
-  const { login } = useAuth();
+function AuthCard({ onClose, onAuthenticated, forceVerify = false }) {
+  const { login, logout, user } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState(forceVerify ? user?.email : null);
+
+  // Un compte non vérifié ne doit pas pouvoir naviguer : si le login/register
+  // renvoie email_verified=false, on bascule sur l'écran de code au lieu de
+  // fermer la modale.
+  function handleAuthResult(nextUser) {
+    if (nextUser && nextUser.email_verified === false) {
+      setVerifyEmail(nextUser.email);
+      return;
+    }
+    onAuthenticated?.(nextUser);
+  }
 
   const handleAuthSubmit = async (event) => {
     event.preventDefault();
@@ -36,13 +49,42 @@ function AuthCard({ onClose, onAuthenticated }) {
       }
 
       login(data.user || null, data.token || null);
-      onAuthenticated?.(data.user || null);
+      handleAuthResult(data.user || null);
     } catch (err) {
       setError(err.message || "Erreur réseau.");
     } finally {
       setLoading(false);
     }
   };
+
+  function handleClose() {
+    if (verifyEmail && forceVerify) {
+      // Compte connecté mais non vérifié : "fermer" = se déconnecter,
+      // sinon l'utilisateur resterait coincé sans pouvoir naviguer.
+      logout();
+    }
+    onClose?.();
+  }
+
+  if (verifyEmail) {
+    return (
+      <div className="authOverlay">
+        <div className="authCard">
+          <button className="authCloseButton" type="button" onClick={handleClose}>
+            ×
+          </button>
+          <VerifyCodeCard
+            email={verifyEmail}
+            onVerified={(nextUser) => {
+              setVerifyEmail(null);
+              onAuthenticated?.(nextUser);
+            }}
+            onLogout={forceVerify ? logout : undefined}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="authOverlay">
@@ -111,11 +153,15 @@ function AuthCard({ onClose, onAuthenticated }) {
                 <button type="submit" className="authSubmitButton" disabled={loading}>
                   {loading ? "Patientez..." : "SE CONNECTER"}
                 </button>
+
+                <a href="/api/auth/google" className="authGoogleButton">
+                  Continuer avec Google
+                </a>
               </form>
             </div>
 
             <div className="authPanel authPanelRight">
-              <RegisterCard onAuthenticated={onAuthenticated} />
+              <RegisterCard onAuthenticated={handleAuthResult} />
             </div>
           </div>
         </div>

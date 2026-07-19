@@ -12,11 +12,13 @@ function Navbar({ onUserClick }) {
   const location = useLocation();
 
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollectionVisible, setIsCollectionVisible] = useState(false);
   const isCollectionActive = location.pathname === "/" && isCollectionVisible;
   const observerRef = useRef(null);
+  const accountMenuRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,6 +29,19 @@ function Navbar({ onUserClick }) {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!showAccountMenu) return;
+
+    function handleClickOutside(event) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
+        setShowAccountMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showAccountMenu]);
 
   useEffect(() => {
     if (observerRef.current) {
@@ -94,20 +109,45 @@ function Navbar({ onUserClick }) {
         </ul>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.authButton}
-            onClick={() => {
-              if (isLoggedIn) {
-                setShowLogoutModal(true);
-                return;
-              }
-              onUserClick?.();
-            }}
-            aria-label={isLoggedIn ? "Déconnexion" : "Connexion"}
-          >
-            {isLoggedIn ? <LogOut size={20} /> : <User size={20} />}
-          </button>
+          <div className={styles.accountWrapper} ref={accountMenuRef}>
+            <button
+              type="button"
+              className={styles.authButton}
+              onClick={() => {
+                if (isLoggedIn) {
+                  setShowAccountMenu((value) => !value);
+                  return;
+                }
+                onUserClick?.();
+              }}
+              aria-label={isLoggedIn ? "Mon compte" : "Connexion"}
+            >
+              <User size={20} />
+            </button>
+
+            {isLoggedIn && showAccountMenu && (
+              <div className={styles.accountMenu}>
+                <Link
+                  to="/mes-commandes"
+                  className={styles.accountMenuLink}
+                  onClick={() => setShowAccountMenu(false)}
+                >
+                  Mes commandes
+                </Link>
+                <button
+                  type="button"
+                  className={styles.accountMenuLogout}
+                  onClick={() => {
+                    setShowAccountMenu(false);
+                    setShowLogoutModal(true);
+                  }}
+                >
+                  <LogOut size={16} />
+                  Se déconnecter
+                </button>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             className={styles.cartButton}

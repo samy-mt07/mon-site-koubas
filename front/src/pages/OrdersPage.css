@@ -1,0 +1,217 @@
+.ordersPage {
+  min-height: 100vh;
+  background: #fffcf1;
+  color: #2f2a22;
+  padding: 3rem 6vw 5rem;
+}
+
+.ordersPage h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 3.2vw, 2.6rem);
+  margin: 0 0 2rem;
+}
+
+.ordersLoading,
+.ordersError {
+  color: #6b7280;
+}
+
+.ordersError {
+  color: #b63a3a;
+  font-weight: 600;
+}
+
+.ordersList {
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.orderCard {
+  background: #ffffff;
+  border: 1px solid #efe6d3;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.orderCardHeader {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 1.25rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 1rem 1.25rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.orderCardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.orderNumber {
+  font-weight: 700;
+}
+
+.orderDate {
+  color: #6b7280;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.orderStatusBadge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.orderStatus-pending {
+  background: #f6f2eb;
+  color: #8a7a55;
+}
+
+.orderStatus-paid {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.orderStatus-cancelled {
+  background: rgba(182, 58, 58, 0.1);
+  color: #b63a3a;
+}
+
+.orderTotal {
+  font-weight: 700;
+  min-width: 80px;
+  text-align: right;
+}
+
+.orderCardDetails {
+  border-top: 1px solid #efe6d3;
+  padding: 1.25rem;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.orderItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.orderItemRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+}
+
+.orderItemQty {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.orderItemPrice {
+  font-weight: 600;
+}
+
+.orderShippingBlock {
+  color: #4f4639;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.orderShippingTitle {
+  color: #888;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.4rem;
+}
+
+.orderShippingBlock p {
+  margin: 0;
+}
+
+.ordersEmptyState {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 3rem 6vw;
+  color: #2f2a22;
+}
+
+.ordersEmptyState h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  margin: 0;
+}
+
+.ordersEmptyState p {
+  color: #6b7280;
+  max-width: 420px;
+}
+
+.ordersEmptyButton {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  padding: 0.95rem 1.75rem;
+  border-radius: 999px;
+  background: #e7d8b8;
+  color: #2f2a22;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.ordersEmptyButton:hover {
+  background: #d9c39a;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 720px) {
+  .orderCardHeader {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "info status"
+      "total chevron";
+    row-gap: 0.5rem;
+  }
+
+  .orderCardInfo {
+    grid-area: info;
+  }
+
+  .orderStatusBadge {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  .orderTotal {
+    grid-area: total;
+    text-align: left;
+  }
+
+  .orderCardChevron {
+    grid-area: chevron;
+    justify-self: end;
+  }
+
+  .orderCardDetails {
+    grid-template-columns: 1fr;
+  }
+}

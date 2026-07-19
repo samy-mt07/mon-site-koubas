@@ -175,6 +175,44 @@
   background: #d6bfa0;
 }
 
+.authGoogleButton {
+  margin-top: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: #ffffff;
+  color: #2f2a22;
+  font-weight: 600;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.authGoogleButton:hover {
+  transform: translateY(-1px);
+  background: #f6f2eb;
+  color: #2f2a22;
+}
+
+.authMessage {
+  font-size: 0.9rem;
+  border-radius: 12px;
+  padding: 0.6rem 0.85rem;
+}
+
+.authError {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.authSuccess {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+}
+
 @media (max-width: 500px) {
   .authCard {
     padding: 1.5rem;

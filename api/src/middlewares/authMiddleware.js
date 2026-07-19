@@ -25,6 +25,9 @@ async function authMiddleware(req, res, next) {
     console.log("🔎 authMiddleware, req.user =", user);
 
     delete user.password_hash;
+    delete user.verification_code;
+    delete user.verification_code_expires_at;
+    delete user.verification_code_sent_at;
     req.user = user;
 
     next();

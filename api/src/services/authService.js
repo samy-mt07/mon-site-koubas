@@ -4,9 +4,39 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const config = require("../config/env");
-const { createUser, getUserByEmail } = require("../models/userModel");
+const {
+  createUser,
+  getUserByEmail,
+  getUserByGoogleId,
+  createGoogleUser,
+  linkGoogleAccount,
+  setVerificationCode,
+  markEmailVerified,
+} = require("../models/userModel");
+const { sendVerificationEmail } = require("./emailService");
 
 const JWT_SECRET = config.jwt.secret;
+const VERIFICATION_CODE_TTL_MS = 15 * 60 * 1000;
+const RESEND_COOLDOWN_MS = 60 * 1000;
+
+function generateVerificationCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function buildTokenPayload(user) {
+  return {
+    id: user.id,
+    full_name: user.full_name,
+    email: user.email,
+    created_at: user.created_at,
+    is_admin: user.is_admin ?? false,
+    email_verified: user.email_verified ?? false,
+  };
+}
+
+function signToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+}
 
 // REGISTER
 async function registerUser({ full_name, email, password }) {
@@ -27,25 +57,20 @@ async function registerUser({ full_name, email, password }) {
   // Hash password
   const password_hash = await bcrypt.hash(password, 10);
 
-  // Créer user → ton modèle créer l'utilisateur SANS is_admin donc on fait comme avant
-  const user = await createUser(full_name, email, password_hash);
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
 
-  // IMPORTANT : si colonne is_admin existe, on le renvoie, sinon false
-  user.is_admin = user.is_admin ?? false;
+  // Créer user (email_verified=false par défaut)
+  const user = await createUser(full_name, email, password_hash, code, expiresAt);
 
-  // Construire le payload complet du token
-  const payload = {
-    id: user.id,
-    full_name: user.full_name,
-    email: user.email,
-    created_at: user.created_at,
-    is_admin: user.is_admin, 
-  };
+  try {
+    await sendVerificationEmail(email, code);
+  } catch (err) {
+    throw new Error("EMAIL_SEND_FAILED");
+  }
 
-  // Générer token
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
-
-  delete user.password_hash;
+  const payload = buildTokenPayload(user);
+  const token = signToken(payload);
 
   return { user: payload, token };
 }
@@ -66,38 +91,121 @@ async function loginUser({ email, password }) {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  //  On vérifie le mot de passe
+  //  On vérifie le mot de passe (compte Google sans mot de passe → pas de password_hash)
+  if (!user.password_hash) {
+    throw new Error("INVALID_CREDENTIALS");
+  }
+
   const isValid = await bcrypt.compare(password, user.password_hash);
   if (!isValid) {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  // 3️ On s'assure que is_admin est bien un booléen
-  // (si dans la BD c'est NULL → false)
-  user.is_admin = user.is_admin ?? false;
-
-  // 4️ Payload qui sera dans le token ET renvoyé au front
-  const payload = {
-    id: user.id,
-    full_name: user.full_name,
-    email: user.email,
-    created_at: user.created_at,
-    is_admin: user.is_admin, //  très important
-  };
-
-// 5️Générer le token JWT
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
-
-  // 6️ On enlève le hash avant de renvoyer l'utilisateur
-  delete user.password_hash;
+  const payload = buildTokenPayload(user);
+  const token = signToken(payload);
 
   return { user: payload, token };
 }
 
-//  UN SEUL EXPORT PROPRE ICI :
+// POST /auth/verify-email  { email, code }
+async function verifyEmailCode({ email, code }) {
+  if (!email || !code) {
+    throw new Error("MISSING_FIELDS");
+  }
+
+  const user = await getUserByEmail(email);
+  if (!user) {
+    throw new Error("INVALID_CODE");
+  }
+
+  if (user.email_verified) {
+    throw new Error("ALREADY_VERIFIED");
+  }
+
+  if (!user.verification_code || user.verification_code !== code) {
+    throw new Error("INVALID_CODE");
+  }
+
+  if (!user.verification_code_expires_at || new Date(user.verification_code_expires_at) < new Date()) {
+    throw new Error("CODE_EXPIRED");
+  }
+
+  const updated = await markEmailVerified(user.id);
+  const payload = buildTokenPayload(updated);
+  const token = signToken(payload);
+
+  return { user: payload, token };
+}
+
+// POST /auth/resend-code  { email }
+async function resendVerificationCode({ email }) {
+  if (!email) {
+    throw new Error("MISSING_FIELDS");
+  }
+
+  const user = await getUserByEmail(email);
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  if (user.email_verified) {
+    throw new Error("ALREADY_VERIFIED");
+  }
+
+  if (user.verification_code_sent_at) {
+    const elapsedMs = Date.now() - new Date(user.verification_code_sent_at).getTime();
+    if (elapsedMs < RESEND_COOLDOWN_MS) {
+      const err = new Error("COOLDOWN_ACTIVE");
+      err.retryAfterMs = RESEND_COOLDOWN_MS - elapsedMs;
+      throw err;
+    }
+  }
+
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
+
+  await setVerificationCode(user.id, code, expiresAt);
+
+  try {
+    await sendVerificationEmail(email, code);
+  } catch (err) {
+    throw new Error("EMAIL_SEND_FAILED");
+  }
+
+  return { message: "CODE_RESENT" };
+}
+
+// Google OAuth: login/register + auto-link par email vérifié Google
+async function findOrCreateGoogleUser({ googleId, email, fullName }) {
+  let user = await getUserByGoogleId(googleId);
+
+  if (!user) {
+    const existingByEmail = await getUserByEmail(email);
+    if (existingByEmail) {
+      // Compte manuel existant avec le même email → on lie le compte Google
+      // (Google a déjà vérifié cet email, donc on fait confiance à ce lien).
+      user = await linkGoogleAccount(existingByEmail.id, googleId);
+    } else {
+      user = await createGoogleUser({
+        full_name: fullName || email.split("@")[0],
+        email,
+        google_id: googleId,
+      });
+    }
+  }
+
+  const payload = buildTokenPayload(user);
+  const token = signToken(payload);
+
+  return { user: payload, token };
+}
+
 module.exports = {
   registerUser,
   loginUser,
+  verifyEmailCode,
+  resendVerificationCode,
+  findOrCreateGoogleUser,
 };
 
 

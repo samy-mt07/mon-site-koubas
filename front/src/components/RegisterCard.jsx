@@ -54,6 +54,8 @@ function RegisterCard({ onAuthenticated }) {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
+      // email_verified est toujours false ici (nouveau compte) — AuthCard
+      // bascule sur l'écran de code via handleAuthResult/onAuthenticated.
       login(data.user || null, data.token || null);
       onAuthenticated?.(data.user || null);
     } catch (err) {
