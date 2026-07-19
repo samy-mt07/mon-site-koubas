@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import "./ResultPage.css";
 
 function OAuthCallback() {
   const { login } = useAuth();
+  const { showToast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -18,6 +20,9 @@ function OAuthCallback() {
     try {
       const user = JSON.parse(rawUser);
       login(user, token);
+      if (user?.full_name) {
+        showToast(`Bienvenue, ${user.full_name.split(" ")[0]} !`);
+      }
       navigate("/", { replace: true });
     } catch {
       navigate("/?googleAuthError=1", { replace: true });

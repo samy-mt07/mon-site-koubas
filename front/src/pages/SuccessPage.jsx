@@ -63,6 +63,11 @@ function SuccessPage() {
             <span>Commande n°{order.orderId}</span>
             <span>Statut : {order.orderStatus}</span>
           </div>
+          <p className="resultHint">
+            Suivez votre commande à tout moment depuis votre compte (icône en
+            haut à droite), ou directement dans{" "}
+            <Link to="/mes-commandes">vos commandes</Link>.
+          </p>
           <Link to="/" className="resultButton">
             Retour à l'accueil
           </Link>

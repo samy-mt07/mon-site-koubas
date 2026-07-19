@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import AuthCard from "../AuthCard";
 import CartDrawer from "../cart/CartDrawer";
+import Footer from "../Footer";
 import { useAuth } from "../../context/AuthContext";
 
 function Layout() {
@@ -21,6 +22,7 @@ function Layout() {
       <main className="pageMain">
         <Outlet />
       </main>
+      <Footer />
       {authModalOpen && (
         <AuthCard
           forceVerify={forceVerify}

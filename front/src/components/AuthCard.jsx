@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import RegisterCard from "./RegisterCard";
 import VerifyCodeCard from "./VerifyCodeCard";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import "./AuthCard.css";
 
 function AuthCard({ onClose, onAuthenticated, forceVerify = false }) {
   const { login, logout, user } = useAuth();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -21,6 +23,9 @@ function AuthCard({ onClose, onAuthenticated, forceVerify = false }) {
     if (nextUser && nextUser.email_verified === false) {
       setVerifyEmail(nextUser.email);
       return;
+    }
+    if (nextUser?.full_name) {
+      showToast(`Bienvenue, ${nextUser.full_name.split(" ")[0]} !`);
     }
     onAuthenticated?.(nextUser);
   }
@@ -77,6 +82,9 @@ function AuthCard({ onClose, onAuthenticated, forceVerify = false }) {
             email={verifyEmail}
             onVerified={(nextUser) => {
               setVerifyEmail(null);
+              if (nextUser?.full_name) {
+                showToast(`Bienvenue, ${nextUser.full_name.split(" ")[0]} !`);
+              }
               onAuthenticated?.(nextUser);
             }}
             onLogout={forceVerify ? logout : undefined}

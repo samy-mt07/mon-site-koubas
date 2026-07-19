@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, User, ShoppingCart, LogOut } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useToast } from "../../context/ToastContext";
 import styles from "./Navbar.module.css";
 
 function Navbar({ onUserClick }) {
   const { isLoggedIn, logout } = useAuth();
   const { totalCount, openDrawer } = useCart();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -77,6 +80,22 @@ function Navbar({ onUserClick }) {
     }
   };
 
+  // Le footer (avec #contact) est monté sur toutes les pages via Layout,
+  // donc pas besoin du détour par navigate()+state comme pour #collection.
+  const goToContact = (event) => {
+    event.preventDefault();
+    setIsMobileMenuOpen(false);
+    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutModal(false);
+    logout();
+    showToast("À bientôt !");
+    navigate("/");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <nav className={`${styles.navbar} ${isScrolled ? styles.scrolled : ""}`}>
       <div className={styles.inner}>
@@ -104,7 +123,9 @@ function Navbar({ onUserClick }) {
             <a href="#blog">Blog</a>
           </li>
           <li>
-            <a href="#contact">Contact</a>
+            <a href="#contact" onClick={goToContact}>
+              Contact
+            </a>
           </li>
         </ul>
 
@@ -195,39 +216,38 @@ function Navbar({ onUserClick }) {
             </a>
           </li>
           <li>
-            <a href="#contact" onClick={() => setIsMobileMenuOpen(false)}>
+            <a href="#contact" onClick={goToContact}>
               Contact
             </a>
           </li>
         </ul>
       )}
 
-      {showLogoutModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalCard}>
-            <p>Êtes-vous sûr de vouloir vous déconnecter ?</p>
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                className={styles.modalCancelButton}
-                onClick={() => setShowLogoutModal(false)}
-              >
-                Non
-              </button>
-              <button
-                type="button"
-                className={styles.modalConfirmButton}
-                onClick={() => {
-                  setShowLogoutModal(false);
-                  logout();
-                }}
-              >
-                Oui
-              </button>
+      {showLogoutModal &&
+        createPortal(
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalCard}>
+              <p>Êtes-vous sûr de vouloir vous déconnecter ?</p>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.modalCancelButton}
+                  onClick={() => setShowLogoutModal(false)}
+                >
+                  Non
+                </button>
+                <button
+                  type="button"
+                  className={styles.modalConfirmButton}
+                  onClick={handleLogoutConfirm}
+                >
+                  Oui
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </nav>
   );
 }
