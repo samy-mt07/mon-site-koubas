@@ -9,6 +9,20 @@ import ScrollToTop from "../ScrollToTop";
 import PageTransition from "../PageTransition";
 import { useAuth } from "../../context/AuthContext";
 
+// Garde en phase avec CONTACT_EMAIL / SOCIAL_LINKS dans Footer.jsx.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Aurassens",
+  url: "https://aurassens.shop",
+  logo: "https://aurassens.shop/LOGO.png",
+  email: "contact@aurassens.shop",
+  sameAs: [
+    "https://www.instagram.com/koubascents/",
+    "https://www.tiktok.com/@koubascents",
+  ],
+};
+
 function Layout() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const { isLoggedIn, user } = useAuth();
@@ -22,6 +36,10 @@ function Layout() {
 
   return (
     <div className="page-shell">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
       <ScrollToTop />
       <Navbar onUserClick={() => setIsAuthOpen(true)} />
       <main className="pageMain">

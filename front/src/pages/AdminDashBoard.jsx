@@ -20,6 +20,7 @@ import {
   Pencil,
 } from "lucide-react";
 import FreeDeliveryToggle from "../components/FreeDeliveryToggle";
+import Seo from "../components/Seo";
 
 /**
  * AdminDashboard — koubas
@@ -1081,6 +1082,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Seo title="Admin" noindex path="/admin" />
       <div className="mx-auto max-w-5xl px-6 py-8">
         <header className="mb-8 flex items-start justify-between gap-4">
           <div>

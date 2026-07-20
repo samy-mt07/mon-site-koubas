@@ -21,7 +21,7 @@ function CollectionSection() {
     <section id="collection" className="collectionSection">
       <div className="collectionHeader">
         <p className="eyebrow">Collection</p>
-        <h1>Nos parfums</h1>
+        <h2>Nos parfums</h2>
         <p className="collectionIntro">
           Découvrez des créations raffinées pensées pour sublimer votre intérieur.
         </p>

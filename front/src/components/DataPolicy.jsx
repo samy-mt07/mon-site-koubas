@@ -1,9 +1,15 @@
 import React from "react";
+import Seo from "./Seo";
 import "./DataPolicy.css";
 
 function DataPolicy() {
   return (
     <div className="privacyPolicyPage">
+      <Seo
+        title="Politique de confidentialité"
+        description="Politique de confidentialité d'Aurassens — Loi 25 et PIPEDA."
+        path="/politique-confidentialite"
+      />
       <h1>Politique de confidentialité — Aurassens</h1>
       <p className="policyUpdated"><strong>Dernière mise à jour :</strong> 19 juillet 2026</p>
 

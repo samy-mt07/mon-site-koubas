@@ -30,7 +30,15 @@ function CartDrawer() {
                 <li key={item.id} className={styles.item}>
                   <div className={styles.itemImageWrapper}>
                     {item.image_url ? (
-                      <img src={resolveImageUrl(item.image_url)} alt={item.name} className={styles.itemImage} />
+                      <img
+                        src={resolveImageUrl(item.image_url)}
+                        alt={item.name}
+                        className={styles.itemImage}
+                        width="64"
+                        height="64"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     ) : (
                       <div className={styles.itemPlaceholder} />
                     )}

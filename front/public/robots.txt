@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /panier
+Disallow: /checkout
+Disallow: /mes-commandes
+Disallow: /success
+Disallow: /cancel
+Disallow: /oauth-callback
+Disallow: /admin
+Disallow: /products
+
+Sitemap: https://aurassens.shop/sitemap.xml

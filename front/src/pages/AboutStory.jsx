@@ -1,9 +1,15 @@
 import React from "react";
+import Seo from "../components/Seo";
 import "./AboutStory.css";
 
 function AboutStory() {
   return (
     <div className="aboutStoryPage">
+      <Seo
+        title="Notre histoire"
+        description="L'histoire d'Aurassens, née sur les routes du Québec."
+        path="/notre-histoire"
+      />
       <div className="aboutStoryCard">
         <h1>Notre histoire</h1>
 

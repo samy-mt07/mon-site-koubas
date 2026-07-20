@@ -35,6 +35,10 @@ function ProductCard({ product }) {
             src={resolveImageUrl(product.image_url)}
             alt={product.name}
             className="productImage"
+            width="400"
+            height="260"
+            loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="productPlaceholder">AURA SCENTS</div>

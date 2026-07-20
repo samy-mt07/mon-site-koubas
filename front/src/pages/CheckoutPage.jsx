@@ -6,6 +6,7 @@ import { useProducts, formatPrice } from "../context/ProductsContext";
 import AuthCard from "../components/AuthCard";
 import FreeDeliveryBanner from "../components/FreeDeliveryBanner";
 import OrderRecap from "../components/OrderRecap";
+import Seo from "../components/Seo";
 import "./CheckoutPage.css";
 
 const ERROR_MESSAGES = {
@@ -162,6 +163,7 @@ function CheckoutPage() {
   if (!isLoggedIn) {
     return (
       <div className="checkoutAuthGate">
+        <Seo title="Checkout" noindex path="/checkout" />
         <h1>Connectez-vous pour continuer</h1>
         <p>Votre panier vous attend, connectez-vous ou créez un compte pour finaliser votre commande.</p>
         <AuthCard onClose={() => navigate("/panier")} onAuthenticated={() => {}} />
@@ -171,6 +173,7 @@ function CheckoutPage() {
 
   return (
     <div className="checkoutPage">
+      <Seo title="Checkout" noindex path="/checkout" />
       <div className="checkoutPageContainer">
         <h1>Livraison</h1>
 

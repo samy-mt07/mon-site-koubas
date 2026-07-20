@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { formatPrice } from "../context/ProductsContext";
+import Seo from "../components/Seo";
 import "./OrdersPage.css";
 
 const STATUS_LABELS = {
@@ -114,6 +115,7 @@ function OrdersPage() {
   if (loading) {
     return (
       <div className="ordersPage">
+        <Seo title="Mes commandes" noindex path="/mes-commandes" />
         <h1>Mes commandes</h1>
         <p className="ordersLoading">Chargement...</p>
       </div>
@@ -123,6 +125,7 @@ function OrdersPage() {
   if (error) {
     return (
       <div className="ordersPage">
+        <Seo title="Mes commandes" noindex path="/mes-commandes" />
         <h1>Mes commandes</h1>
         <p className="ordersError">{error}</p>
       </div>
@@ -132,6 +135,7 @@ function OrdersPage() {
   if (orders.length === 0) {
     return (
       <div className="ordersEmptyState">
+        <Seo title="Mes commandes" noindex path="/mes-commandes" />
         <h1>Aucune commande pour l'instant</h1>
         <p>Vos commandes apparaîtront ici une fois votre première commande passée.</p>
         <Link to="/#collection" className="ordersEmptyButton">
@@ -143,6 +147,7 @@ function OrdersPage() {
 
   return (
     <div className="ordersPage">
+      <Seo title="Mes commandes" noindex path="/mes-commandes" />
       <h1>Mes commandes</h1>
       <div className="ordersList">
         {orders.map((order) => (

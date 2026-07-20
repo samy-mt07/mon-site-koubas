@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import Seo from "../components/Seo";
 import "./ResultPage.css";
 
 function SuccessPage() {
@@ -53,6 +54,7 @@ function SuccessPage() {
 
   return (
     <div className="resultPage">
+      <Seo title="Commande confirmée" noindex path="/success" />
       {status === "loading" && <p className="resultStatus">Vérification de votre paiement…</p>}
 
       {status === "success" && (

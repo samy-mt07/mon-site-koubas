@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import Seo from "../components/Seo";
 import "./ResultPage.css";
 
 function OAuthCallback() {
@@ -32,6 +33,7 @@ function OAuthCallback() {
 
   return (
     <div className="resultPage">
+      <Seo title="Connexion" noindex path="/oauth-callback" />
       <div className="resultCard">
         <h1>{missingParams ? "Connexion échouée" : "Connexion en cours..."}</h1>
         {missingParams && <p>Connexion Google incomplète, réessaie.</p>}

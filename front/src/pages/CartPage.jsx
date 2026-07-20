@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useProducts, resolveImageUrl, formatPrice } from "../context/ProductsContext";
 import FreeDeliveryBanner from "../components/FreeDeliveryBanner";
+import Seo from "../components/Seo";
 import "./CartPage.css";
 
 function CartPage() {
@@ -20,6 +21,7 @@ function CartPage() {
   if (items.length === 0) {
     return (
       <div className="cartEmptyState">
+        <Seo title="Panier" noindex path="/panier" />
         <h1>Votre panier est vide</h1>
         <p>Découvrez nos diffuseurs et laissez-vous séduire par nos parfums d'exception.</p>
         <Link to="/#collection" className="cartEmptyButton">
@@ -31,6 +33,7 @@ function CartPage() {
 
   return (
     <div className="cartPage">
+      <Seo title="Panier" noindex path="/panier" />
       <div className="cartPageContainer">
         <h1>Mon panier</h1>
 
@@ -47,7 +50,15 @@ function CartPage() {
                   <div key={item.id} className={`cartRow ${isUnavailable ? "cartRowUnavailable" : ""}`}>
                     <div className="cartRowImageWrapper">
                       {item.image_url ? (
-                        <img src={resolveImageUrl(item.image_url)} alt={item.name} className="cartRowImage" />
+                        <img
+                          src={resolveImageUrl(item.image_url)}
+                          alt={item.name}
+                          className="cartRowImage"
+                          width="80"
+                          height="80"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : (
                         <div className="cartRowPlaceholder" />
                       )}

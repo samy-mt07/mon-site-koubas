@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CollectionSection from "../components/CollectionSection";
+import Seo from "../components/Seo";
 import "../App.css";
 
 function Home() {
@@ -17,6 +18,10 @@ function Home() {
 
   return (
     <>
+      <Seo
+        description="Diffuseurs de parfum haut de gamme pour sublimer votre intérieur. Livraison au Québec."
+        path="/"
+      />
       <section className="homepage">
         <div className="homepageContent">
           <h1>KOUBA SCENTS</h1>

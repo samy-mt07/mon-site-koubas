@@ -3,7 +3,10 @@ import { useParams, Link } from "react-router-dom";
 import { useProducts, resolveImageUrl, formatPrice } from "../context/ProductsContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
+import Seo from "../components/Seo";
 import "./ProductDetail.css";
+
+const SITE_URL = "https://aurassens.shop";
 
 function ProductDetail() {
   const { id } = useParams();
@@ -37,15 +40,50 @@ function ProductDetail() {
     showToast("Ajouté au panier !");
   };
 
+  const absoluteImageUrl = product.image_url ? `${SITE_URL}${resolveImageUrl(product.image_url)}` : undefined;
+
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || undefined,
+    image: absoluteImageUrl,
+    sku: String(product.id),
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "CAD",
+      price: (Number(product.price_cents) / 100).toFixed(2),
+      availability: isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+      url: `${SITE_URL}/produit/${product.id}`,
+    },
+  };
+
   return (
     <div className="productDetailPage">
+      <Seo
+        title={product.name}
+        description={product.description ? product.description.slice(0, 160) : undefined}
+        path={`/produit/${product.id}`}
+        image={absoluteImageUrl}
+        type="product"
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <Link to="/" className="backLink">
         Retour à l'accueil
       </Link>
       <div className="productDetailGrid">
         <div className="productDetailImageWrapper">
           {product.image_url ? (
-            <img src={resolveImageUrl(product.image_url)} alt={product.name} className="productDetailImage" />
+            <img
+              src={resolveImageUrl(product.image_url)}
+              alt={product.name}
+              className="productDetailImage"
+              width="600"
+              height="480"
+            />
           ) : (
             <div className="productDetailPlaceholder">AURA SCENTS</div>
           )}
